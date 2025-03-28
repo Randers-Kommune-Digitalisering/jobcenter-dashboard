@@ -15,8 +15,8 @@ POD_NAME = os.getenv('POD_NAME', 'pod_name_not_set')
 # KEYCLOAK_REALM = os.environ["KEYCLOAK_REALM"].strip()
 # KEYCLOAK_CLIENT_ID = os.environ["KEYCLOAK_CLIENT_ID"].strip()
 
-# Database
-DB_HOST = os.environ.get('DB_HOST')
-DB_USER = os.environ.get('DB_USER')
-DB_PASS = os.environ.get('DB_PASS')
-DB_NAME = os.environ.get('DB_NAME')
+ZYLINC_POSTGRES_DB_HOST = os.getenv("ZYLINC_POSTGRES_DB_HOST")
+ZYLINC_POSTGRES_DB_USER = os.getenv("ZYLINC_POSTGRES_DB_USER")
+ZYLINC_POSTGRES_DB_PASS = os.getenv("ZYLINC_POSTGRES_DB_PASS")
+ZYLINC_POSTGRES_DB_DATABASE = os.getenv("ZYLINC_POSTGRES_DB_DATABASE")
+ZYLINC_POSTGRES_DB_PORT = os.getenv("ZYLINC_POSTGRES_DB_PORT")
