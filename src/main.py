@@ -1,6 +1,7 @@
 import streamlit as st
 from utils.logo import get_logo
 from streamlit_option_menu import option_menu
+from page.conversation_result import show_conversation_result
 
 st.set_page_config(page_title="Jobcenter", page_icon="assets/favicon.ico", layout="wide")
 
@@ -26,6 +27,6 @@ if selected == 'Varighed af samtale':
 elif selected == 'Antal af samtaler':
     st.write("## Antal af samtaler")
 elif selected == 'Resultat af opkald':
-    st.write("## Resultat af opkald")
+    show_conversation_result()
 elif selected == 'Ventetid pr opkald':
     st.write("## Ventetid pr opkald")
