@@ -8,14 +8,15 @@ import streamlit_shadcn_ui as ui
 
 
 def show_conversation_result():
+    st.sidebar.header("Jobcenter Kø")
     queue_table_mapping = get_all_queues_with_tables()
     all_queues = list(queue_table_mapping.keys())
 
-    selected_queue = st.selectbox("Vælg en kø", all_queues, key='queue_select')
+    selected_queue_display = st.sidebar.selectbox("Vælg en kø", all_queues, key='queue_select')
 
-    selected_table = queue_table_mapping[selected_queue]
+    original_queue_name, selected_table = queue_table_mapping[selected_queue_display]
 
-    historical_data = load_and_process_data_from_zylinc_db(table_name=selected_table, queue_name=selected_queue)
+    historical_data = load_and_process_data_from_zylinc_db(table_name=selected_table, queue_name=original_queue_name)
     if historical_data is None:
         st.error("Failed to fetch data from the database.")
         st.stop()
@@ -31,7 +32,22 @@ def show_conversation_result():
 
     if content_tabs == 'Dag':
         unique_dates = historical_data['StartTimeDenmark'].dt.date.unique()
-        selected_date = st.date_input("Vælg en dato", min_value=min(unique_dates), max_value=max(unique_dates), key='date_input')
+
+        if len(unique_dates) == 0:
+            st.error("Ingen data tilgængelig for den valgte kø.")
+            st.stop()
+
+        if 'date_input' in st.session_state:
+            if st.session_state['date_input'] < min(unique_dates) or st.session_state['date_input'] > max(unique_dates):
+                st.session_state['date_input'] = max(unique_dates)
+
+        selected_date = st.date_input(
+            "Vælg en dato",
+            value=st.session_state.get('date_input', max(unique_dates)),
+            min_value=min(unique_dates),
+            max_value=max(unique_dates),
+            key='date_input'
+        )
 
         historical_data_today = historical_data[
             (historical_data['StartTimeDenmark'].dt.date == selected_date) &
@@ -45,9 +61,28 @@ def show_conversation_result():
         missed_calls_today = historical_data_today[historical_data_today['Result'] == 'Missed'].shape[0]
         received_calls_today = answered_calls_today + missed_calls_today
 
-        st.metric(label="Antal modtagne opkald", value=received_calls_today)
-        st.metric(label="Antal besvarede opkald", value=answered_calls_today)
-        st.metric(label="Antal mistede opkald", value=missed_calls_today)
+        col1, col2, col3 = st.columns([1, 1, 1])
+
+        with col1:
+            ui.metric_card(
+                title="Antal modtagne opkald",
+                content=int(received_calls_today),
+                description=f"Samlet antal opkald modtaget den {selected_date}."
+            )
+
+        with col2:
+            ui.metric_card(
+                title="Antal besvarede opkald",
+                content=int(answered_calls_today),
+                description=f"Samlet antal opkald besvaret den {selected_date}."
+            )
+
+        with col3:
+            ui.metric_card(
+                title="Antal mistede opkald",
+                content=int(missed_calls_today),
+                description=f"Samlet antal opkald mistet den {selected_date}."
+            )
 
         historical_data_today['TimeInterval'] = historical_data_today['StartTimeDenmark'].dt.floor('30T')
         interval_data = historical_data_today.groupby(['TimeInterval', 'Result']).size().reset_index(name='Antal opkald')
@@ -60,7 +95,11 @@ def show_conversation_result():
             x=alt.X('TimeInterval_Result:N', title='Tidspunkt', axis=alt.Axis(labelAngle=-45)),
             y=alt.Y('Antal opkald:Q', title='Antal opkald'),
             color='Result:N',
-            tooltip=[alt.Tooltip('TimeInterval:T', title='Tidspunkt', format='%H:%M'), alt.Tooltip('Antal opkald:Q', title='Antal opkald'), alt.Tooltip('Result:N', title='Resultat')]
+            tooltip=[
+                alt.Tooltip('TimeInterval:T', title='Tidspunkt', format='%H:%M'),
+                alt.Tooltip('Antal opkald:Q', title='Antal opkald'),
+                alt.Tooltip('Result:N', title='Resultat')
+            ]
         ).properties(
             height=700,
             width=900
@@ -70,24 +109,29 @@ def show_conversation_result():
 
     if content_tabs == 'Uge':
         unique_years = historical_data['StartTimeDenmark'].dt.year.unique()
+
+        if 'selected_year_week' in st.session_state:
+            if st.session_state['selected_year_week'] not in unique_years:
+                st.session_state['selected_year_week'] = max(unique_years)
+
         selected_year_week = st.selectbox(
             "Vælg et år",
             unique_years,
             format_func=lambda x: f'{x}',
-            index=unique_years.tolist().index(st.session_state['selected_year_week']) if 'selected_year_week' in st.session_state and st.session_state['selected_year_week'] is not None else 0,
+            index=unique_years.tolist().index(st.session_state.get('selected_year_week', max(unique_years))),
             key='year_select_week'
         )
 
         unique_weeks = historical_data[historical_data['StartTimeDenmark'].dt.year == selected_year_week]['StartTimeDenmark'].dt.isocalendar().week.unique()
 
         if 'selected_week' not in st.session_state or st.session_state['selected_week'] not in unique_weeks:
-            st.session_state['selected_week'] = unique_weeks[0] if unique_weeks else None
+            st.session_state['selected_week'] = max(unique_weeks) if len(unique_weeks) > 0 else None
 
         selected_week = st.selectbox(
             "Vælg en uge",
             unique_weeks,
             format_func=lambda x: f'Uge {x}',
-            index=unique_weeks.tolist().index(st.session_state['selected_week']) if 'selected_week' in st.session_state and st.session_state['selected_week'] is not None else 0,
+            index=unique_weeks.tolist().index(st.session_state['selected_week']) if st.session_state['selected_week'] in unique_weeks else 0,
             key='week_select'
         )
 
@@ -103,9 +147,28 @@ def show_conversation_result():
         missed_calls_week = historical_data_week[historical_data_week['Result'] == 'Missed'].shape[0]
         received_calls_week = answered_calls_week + missed_calls_week
 
-        st.metric(label="Antal modtagne opkald", value=received_calls_week)
-        st.metric(label="Antal besvarede opkald", value=answered_calls_week)
-        st.metric(label="Antal mistede opkald", value=missed_calls_week)
+        col1, col2, col3 = st.columns([1, 1, 1])
+
+        with col1:
+            ui.metric_card(
+                title="Antal modtagne opkald",
+                content=int(received_calls_week),
+                description=f"Samlet antal opkald modtaget i Uge {selected_week}."
+            )
+
+        with col2:
+            ui.metric_card(
+                title="Antal besvarede opkald",
+                content=int(answered_calls_week),
+                description=f"Samlet antal opkald besvaret i Uge {selected_week}."
+            )
+
+        with col3:
+            ui.metric_card(
+                title="Antal mistede opkald",
+                content=int(missed_calls_week),
+                description=f"Samlet antal opkald mistet i Uge {selected_week}."
+            )
 
         historical_data_week['Day'] = historical_data_week['StartTimeDenmark'].dt.floor('D')
         daily_data = historical_data_week.groupby(['Day', 'Result']).size().reset_index(name='Antal opkald')
@@ -142,11 +205,16 @@ def show_conversation_result():
 
     if content_tabs == 'Måned':
         unique_years = historical_data['StartTimeDenmark'].dt.year.unique()
+
+        if 'selected_year_month' in st.session_state:
+            if st.session_state['selected_year_month'] not in unique_years:
+                st.session_state['selected_year_month'] = max(unique_years)
+
         selected_year_month = st.selectbox(
             "Vælg et år",
             unique_years,
             format_func=lambda x: f'{x}',
-            index=unique_years.tolist().index(st.session_state['selected_year_month']) if 'selected_year_month' in st.session_state and st.session_state['selected_year_month'] is not None else 0,
+            index=unique_years.tolist().index(st.session_state.get('selected_year_month', max(unique_years))),
             key='year_select_month'
         )
 
@@ -154,14 +222,14 @@ def show_conversation_result():
         month_names = {1: 'Januar', 2: 'Februar', 3: 'Marts', 4: 'April', 5: 'Maj', 6: 'Juni', 7: 'Juli', 8: 'August', 9: 'September', 10: 'Oktober', 11: 'November', 12: 'December'}
         month_options = [(month.month, month_names[month.month]) for month in unique_months]
 
-        if 'selected_month' not in st.session_state or st.session_state['selected_month'] is None:
-            st.session_state['selected_month'] = month_options[0][0] if month_options else None
+        if 'selected_month' not in st.session_state or st.session_state['selected_month'] not in [month[0] for month in month_options]:
+            st.session_state['selected_month'] = max([month[0] for month in month_options]) if month_options else None
 
         selected_month = st.selectbox(
             "Vælg en måned",
             month_options,
             format_func=lambda x: x[1],
-            index=[month[0] for month in month_options].index(st.session_state['selected_month']) if 'selected_month' in st.session_state and st.session_state['selected_month'] is not None else 0,
+            index=[month[0] for month in month_options].index(st.session_state['selected_month']) if st.session_state['selected_month'] in [month[0] for month in month_options] else 0,
             key='month_select'
         )
 
