@@ -3,6 +3,7 @@ import pytz
 from datetime import datetime
 from utils.database_connection import get_zylinc_db_client
 from datetime import timedelta
+import re
 
 zylinc_db_client = get_zylinc_db_client()
 
@@ -71,7 +72,9 @@ def get_all_queues_with_tables():
         result = zylinc_db_client.execute_sql(query)
         if result:
             for row in result:
-                queue_name = row[0]
-                queue_table_mapping[queue_name] = table_name
+                original_queue_name = row[0]
+                cleaned_queue_name = re.sub(r"Jobcenter[_ ]?", "", original_queue_name, flags=re.IGNORECASE)
+                cleaned_queue_name = re.sub(r"_\d+$", "", cleaned_queue_name).strip()
+                queue_table_mapping[cleaned_queue_name] = (original_queue_name, table_name)
 
     return queue_table_mapping
