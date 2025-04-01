@@ -2,6 +2,7 @@ import streamlit as st
 from streamlit_option_menu import option_menu
 from page.conversation_result import show_conversation_result
 from page.conversation_calls import show_conversation_call
+from page.conversation_queue_time import show_queue_time
 from utils.logo import get_logo
 
 
@@ -40,7 +41,7 @@ if selected_main == "Zylinc":
     elif selected_zylinc == 'Resultat af opkald':
         show_conversation_result()
     elif selected_zylinc == 'Ventetid pr opkald':
-        st.write("## Ventetid pr opkald")
+        show_queue_time()
     elif selected_zylinc == 'Antal af samtaler':
         show_conversation_call()
 
