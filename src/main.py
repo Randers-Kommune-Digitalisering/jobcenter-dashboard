@@ -4,13 +4,16 @@ from page.conversation_result import show_conversation_result
 from page.conversation_calls import show_conversation_call
 from utils.logo import get_logo
 
+
+st.set_page_config(page_title="Jobcenter", page_icon="assets/favicon.ico", layout="wide")
+
 with st.sidebar:
     st.sidebar.markdown(get_logo(), unsafe_allow_html=True)
     selected_main = option_menu(
         "Jobcenter",
         ["Zylinc", "Betjeninger"],
         icons=["headset", "gear"],
-        menu_icon="bi-headset",
+        menu_icon="bi bi-briefcase-fill",
         default_index=0,
     )
 
