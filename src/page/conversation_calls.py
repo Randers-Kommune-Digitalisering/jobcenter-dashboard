@@ -51,8 +51,8 @@ def show_conversation_call():
         historical_data_today = historical_data[
             (historical_data['StartTimeDenmark'].dt.date == selected_date) &
             (historical_data['StartTimeDenmark'].dt.time.between(
-                datetime.strptime('06:00', '%H:%M').time(),
-                datetime.strptime('16:00', '%H:%M').time()
+                datetime.strptime('05:00', '%H:%M').time(),
+                datetime.strptime('18:00', '%H:%M').time()
             ))
         ]
 
