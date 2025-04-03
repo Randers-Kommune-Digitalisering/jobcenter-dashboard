@@ -5,6 +5,7 @@ from page.conversation_calls import show_conversation_call
 from page.conversation_queue_time import show_queue_time
 from utils.logo import get_logo
 from page.live import display_live_data
+from page.conversation_duration import show_conversation_duration
 
 
 st.set_page_config(page_title="Jobcenter", page_icon="assets/favicon.ico", layout="wide")
@@ -40,7 +41,7 @@ if selected_main == "Zylinc":
     if selected_zylinc == 'Live Data':
         display_live_data()
     elif selected_zylinc == 'Varighed af samtale':
-        st.write("## Varighed af samtale")
+        show_conversation_duration()
     elif selected_zylinc == 'Resultat af opkald':
         show_conversation_result()
     elif selected_zylinc == 'Ventetid pr opkald':
