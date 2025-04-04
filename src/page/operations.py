@@ -19,8 +19,8 @@ operations["EndedAt"] = pd.to_datetime(operations["EndedAt"])
 operations["dato"] = pd.to_datetime(operations["CreatedAt"]).dt.date
 operations["year"] = pd.to_datetime(operations["CreatedAt"]).dt.year
 operations["ugenr"] = pd.to_datetime(operations["CreatedAt"]).dt.isocalendar().week
-operations["QueueName"] = operations["QueueName"].str.strip()
-operations["EmployeeName"] = operations["EmployeeName"].str.strip()
+# operations["QueueName"] = operations["QueueName"].str.strip()
+# operations["EmployeeName"] = operations["EmployeeName"].str.strip()
 operations["Ventetid"] = (operations["CalledAt"] - operations["CreatedAt"]).apply(format_timedelta_in_danish)
 operations["Betjeningstid"] = (operations["EndedAt"] - operations["CalledAt"]).apply(format_timedelta_in_danish)
 
