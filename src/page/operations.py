@@ -40,8 +40,8 @@ colorScale = alt.Scale(
     range=["#83C9FF", "#0068C9"]
 )
 
-operations = operations[operations["State"] != "Discarded"]
-operations = operations.drop(columns=["MunicipalityID", "QueueId", "State", "StateId", "CounterId", "EmployeeId", "DelayedUntil", "DelayedFrom", "IsEmployeeAnonymized", "EmployeeInitials"])
+# operations = operations[operations["State"] != "Discarded"]
+operations = operations.drop(columns=["CounterId", "EmployeeId", "EmployeeInitials"])
 
 
 def show_operations():
