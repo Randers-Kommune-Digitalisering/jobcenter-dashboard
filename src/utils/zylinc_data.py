@@ -75,6 +75,9 @@ def get_all_queues_with_tables():
                 original_queue_name = row[0]
                 cleaned_queue_name = re.sub(r"Jobcenter[_ ]?", "", original_queue_name, flags=re.IGNORECASE)
                 cleaned_queue_name = re.sub(r"_\d+$", "", cleaned_queue_name).strip()
-                queue_table_mapping[cleaned_queue_name] = (original_queue_name, table_name)
+                match = re.search(r"_(\d+)$", original_queue_name)
+                extension_number = match.group(1) if match else ""
+                cleaned_queue_name_with_extension = f"{cleaned_queue_name} - {extension_number}"
+                queue_table_mapping[cleaned_queue_name_with_extension] = (original_queue_name, table_name)
 
     return queue_table_mapping
