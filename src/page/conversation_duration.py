@@ -25,7 +25,7 @@ def show_conversation_duration():
         content_tabs = sac.tabs([
             sac.TabsItem('Dag', tag='Dag'),
             sac.TabsItem('Uge', tag='Uge'),
-            sac.TabsItem('Kvartal', tag='Kvartal'),
+            sac.TabsItem('Måned', tag='Måned'),
         ], color='dark', size='md', position='top', align='start', use_container_width=True)
 
     if content_tabs == 'Dag':
@@ -164,35 +164,81 @@ def show_conversation_duration():
 
         st.altair_chart(chart, use_container_width=True)
 
-    if content_tabs == 'Kvartal':
+    if content_tabs == 'Måned':
         unique_years = historical_data['StartTimeDenmark'].dt.year.unique()
-        selected_year = st.selectbox("Vælg et år", unique_years, format_func=lambda x: f'År {x}', key='year_select')
 
-        unique_quarters = historical_data[historical_data['StartTimeDenmark'].dt.year == selected_year]['StartTimeDenmark'].dt.to_period('Q').unique()
-        quarter_names = {1: 'Q1', 2: 'Q2', 3: 'Q3', 4: 'Q4'}
-        quarter_options = [(quarter.quarter, quarter_names[quarter.quarter]) for quarter in unique_quarters]
-        selected_quarter = st.selectbox("Vælg et kvartal", quarter_options, format_func=lambda x: x[1], key='quarter_select')
+        if len(unique_years) == 0:
+            st.error("Ingen data tilgængelig for den valgte kø.")
+            st.stop()
 
-        selected_quarter_number = selected_quarter[0]
+        if 'selected_year_month' in st.session_state:
+            if st.session_state['selected_year_month'] not in unique_years:
+                st.session_state['selected_year_month'] = max(unique_years)
 
-        historical_data_quarter = historical_data[historical_data['StartTimeDenmark'].dt.to_period('Q') == pd.Period(year=selected_year, quarter=selected_quarter_number, freq='Q')]
+        selected_year_month = st.selectbox(
+            "Vælg et år",
+            unique_years,
+            format_func=lambda x: f'{x}',
+            index=unique_years.tolist().index(st.session_state.get('selected_year_month', max(unique_years))),
+            key='year_select_month'
+        )
 
-        avg_duration_quarter = historical_data_quarter[historical_data_quarter['Result'] == 'Answered']['DurationMinutes'].mean()
+        unique_months = historical_data[historical_data['StartTimeDenmark'].dt.year == selected_year_month]['StartTimeDenmark'].dt.to_period('M').unique()
+        month_names = {1: 'Januar', 2: 'Februar', 3: 'Marts', 4: 'April', 5: 'Maj', 6: 'Juni', 7: 'Juli', 8: 'August', 9: 'September', 10: 'Oktober', 11: 'November', 12: 'December'}
+        month_options = [(month.month, month_names[month.month]) for month in unique_months]
 
-        st.metric(label="Gennemsnitlig varighed af besvarede opkald(Kvartal)", value=convert_minutes_to_hms(avg_duration_quarter))
+        if 'selected_month' not in st.session_state or st.session_state['selected_month'] not in [month[0] for month in month_options]:
+            st.session_state['selected_month'] = max([month[0] for month in month_options]) if month_options else None
 
-        chart_data = historical_data_quarter[['StartTimeDenmark', 'DurationMinutes', 'AgentDisplayName']]
+        selected_month = st.selectbox(
+            "Vælg en måned",
+            month_options,
+            format_func=lambda x: x[1],
+            index=[month[0] for month in month_options].index(st.session_state['selected_month']) if st.session_state['selected_month'] in [month[0] for month in month_options] else 0,
+            key='month_select'
+        )
 
-        st.write(f"## Varighed af samtale(Kvartal) - {quarter_names[selected_quarter_number]} {selected_year}")
-        chart = alt.Chart(chart_data).mark_bar().encode(
-            x=alt.X('StartTimeDenmark:T', title='Tidspunkt', axis=alt.Axis(format='%Y-%m-%d %H:%M')),
+        st.session_state['selected_year_month'] = selected_year_month
+        st.session_state['selected_month'] = selected_month[0]
+
+        selected_month_number = selected_month[0]
+
+        historical_data_month = historical_data[
+            historical_data['StartTimeDenmark'].dt.to_period('M') == pd.Period(year=selected_year_month, month=selected_month_number, freq='M')
+        ]
+
+        if historical_data_month.empty:
+            st.error("Ingen data tilgængelig for den valgte måned.")
+            st.stop()
+
+        avg_duration_month = historical_data_month[historical_data_month['Result'] == 'Answered']['DurationMinutes'].mean()
+        avg_duration_month = 0 if pd.isna(avg_duration_month) else avg_duration_month
+
+        col1 = st.columns([1])[0]
+
+        with col1:
+            st.metric(
+                label="Gennemsnitlig varighed af besvarede opkald (Måned)",
+                value=convert_minutes_to_hms(avg_duration_month),
+                help=f"Data for {month_names[selected_month_number]} {selected_year_month}"
+            )
+
+        historical_data_month['Day'] = historical_data_month['StartTimeDenmark'].dt.day
+
+        daily_data = historical_data_month.groupby(['Day', 'AgentDisplayName']).agg({'DurationMinutes': 'mean'}).reset_index()
+
+        st.write(f"## Varighed af samtale (Måned) - {month_names[selected_month_number]} {selected_year_month}")
+        chart = alt.Chart(daily_data).mark_bar().encode(
+            x=alt.X('Day:O', title='Dag', axis=alt.Axis(format='d')),
             y=alt.Y('DurationMinutes:Q', title='Varighed (minutter)'),
             color=alt.Color('AgentDisplayName:N', title='Medarbejder'),
-            tooltip=[alt.Tooltip('StartTimeDenmark:T', title='Tidspunkt', format='%Y-%m-%d %H:%M'), alt.Tooltip('DurationMinutes:Q', title='Varighed (minutter)'), alt.Tooltip('AgentDisplayName:N', title='Medarbejder')]
+            tooltip=[
+                alt.Tooltip('Day:O', title='Dag'),
+                alt.Tooltip('DurationMinutes:Q', title='Varighed (minutter)'),
+                alt.Tooltip('AgentDisplayName:N', title='Medarbejder')
+            ]
         ).properties(
-            height=500
-        ).facet(
-            facet=alt.Facet('AgentDisplayName:N', title='Medarbejder'),
-            columns=1
+            height=700,
+            width=900
         )
         st.altair_chart(chart, use_container_width=True)
