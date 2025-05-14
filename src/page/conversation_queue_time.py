@@ -27,6 +27,8 @@ def show_queue_time():
             sac.TabsItem('Dag', tag='Dag'),
             sac.TabsItem('Uge', tag='Uge'),
             sac.TabsItem('Måned', tag='Måned'),
+            sac.TabsItem('Kvartal', tag='Kvartal'),
+            sac.TabsItem('Halvår', tag='Halvår'),
         ], color='dark', size='md', position='top', align='start', use_container_width=True)
 
     if content_tabs == 'Dag':
@@ -247,6 +249,192 @@ def show_queue_time():
             tooltip=[
                 alt.Tooltip('Day:O', title='Dag'),
                 alt.Tooltip('QueueDurationMinutes:Q', title='Ventetid (minutter)'),
+                alt.Tooltip('QueueName:N', title='Kø')
+            ]
+        ).properties(
+            height=700,
+            width=900
+        )
+        st.altair_chart(chart, use_container_width=True)
+
+    if content_tabs == 'Kvartal':
+        unique_years = historical_data['StartTimeDenmark'].dt.year.unique()
+
+        if len(unique_years) == 0:
+            st.error("Ingen data tilgængelig for den valgte kø.")
+            st.stop()
+
+        if 'selected_year_quarter' in st.session_state:
+            if st.session_state['selected_year_quarter'] not in unique_years:
+                st.session_state['selected_year_quarter'] = max(unique_years)
+
+        selected_year_quarter = st.selectbox(
+            "Vælg et år",
+            unique_years,
+            format_func=lambda x: f'{x}',
+            index=unique_years.tolist().index(st.session_state.get('selected_year_quarter', max(unique_years))),
+            key='year_select_quarter'
+        )
+
+        historical_data['Quarter'] = historical_data['StartTimeDenmark'].dt.quarter
+        unique_quarters = sorted(historical_data[historical_data['StartTimeDenmark'].dt.year == selected_year_quarter]['Quarter'].unique())
+        quarter_names = {1: '1. kvartal', 2: '2. kvartal', 3: '3. kvartal', 4: '4. kvartal'}
+        quarter_options = [(q, quarter_names[q]) for q in unique_quarters]
+
+        if 'selected_quarter' not in st.session_state or st.session_state['selected_quarter'] not in [q[0] for q in quarter_options]:
+            st.session_state['selected_quarter'] = min([q[0] for q in quarter_options]) if quarter_options else None
+
+        selected_quarter = st.selectbox(
+            "Vælg et kvartal",
+            quarter_options,
+            format_func=lambda x: x[1],
+            index=[q[0] for q in quarter_options].index(st.session_state['selected_quarter']) if st.session_state['selected_quarter'] in [q[0] for q in quarter_options] else 0,
+            key='quarter_select'
+        )
+
+        st.session_state['selected_year_quarter'] = selected_year_quarter
+        st.session_state['selected_quarter'] = selected_quarter[0]
+
+        selected_quarter_number = selected_quarter[0]
+
+        historical_data_quarter = historical_data[
+            (historical_data['StartTimeDenmark'].dt.year == selected_year_quarter) &
+            (historical_data['Quarter'] == selected_quarter_number)
+        ]
+
+        if historical_data_quarter.empty:
+            st.error("Ingen data tilgængelig for det valgte kvartal.")
+            st.stop()
+
+        avg_wait_time_quarter = historical_data_quarter['QueueDurationMinutes'].mean()
+        avg_wait_time_quarter = 0 if pd.isna(avg_wait_time_quarter) else avg_wait_time_quarter
+
+        col1 = st.columns([1])[0]
+
+        with col1:
+            ui.metric_card(
+                title="Gennemsnitlig ventetid (Kvartal)",
+                content=convert_minutes_to_hms(avg_wait_time_quarter),
+                description=f"Ventetid i kø for {quarter_names[selected_quarter_number]} {selected_year_quarter}",
+            )
+
+        queue_data = historical_data_quarter[historical_data_quarter['ConversationEventType'].isin(['JoinedQueue', 'LeftQueue'])]
+        queue_data['QueueDurationHMS'] = queue_data['QueueDurationMinutes'].apply(convert_minutes_to_hms)
+        queue_data['Month'] = queue_data['StartTimeDenmark'].dt.month
+
+        month_names = {1: 'Januar', 2: 'Februar', 3: 'Marts', 4: 'April', 5: 'Maj', 6: 'Juni', 7: 'Juli', 8: 'August', 9: 'September', 10: 'Oktober', 11: 'November', 12: 'December'}
+        queue_data['MonthName'] = queue_data['Month'].map(month_names)
+
+        kvartal_måneder = {
+            1: ['Januar', 'Februar', 'Marts'],
+            2: ['April', 'Maj', 'Juni'],
+            3: ['Juli', 'August', 'September'],
+            4: ['Oktober', 'November', 'December']
+        }
+        current_quarter_months = kvartal_måneder[selected_quarter_number]
+
+        monthly_queue_data = queue_data.groupby('MonthName').agg({'QueueDurationMinutes': 'mean', 'QueueName': 'first'}).reset_index()
+
+        st.write(f"## Ventetid i kø (Kvartal) - {selected_year_quarter}, {quarter_names[selected_quarter_number]}")
+        chart = alt.Chart(monthly_queue_data).mark_bar().encode(
+            x=alt.X('MonthName:O', title='Måned', sort=current_quarter_months),
+            y=alt.Y('QueueDurationMinutes:Q', title='Gennemsnitlig ventetid (minutter)'),
+            color=alt.Color('QueueName:N', title='Kø'),
+            tooltip=[
+                alt.Tooltip('MonthName:O', title='Måned'),
+                alt.Tooltip('QueueDurationMinutes:Q', title='Gennemsnitlig ventetid (minutter)'),
+                alt.Tooltip('QueueName:N', title='Kø')
+            ]
+        ).properties(
+            height=700,
+            width=900
+        )
+        st.altair_chart(chart, use_container_width=True)
+
+    if content_tabs == 'Halvår':
+        unique_years = historical_data['StartTimeDenmark'].dt.year.unique()
+
+        if len(unique_years) == 0:
+            st.error("Ingen data tilgængelig for den valgte kø.")
+            st.stop()
+
+        if 'selected_year_half' in st.session_state:
+            if st.session_state['selected_year_half'] not in unique_years:
+                st.session_state['selected_year_half'] = max(unique_years)
+
+        selected_year_half = st.selectbox(
+            "Vælg et år",
+            unique_years,
+            format_func=lambda x: f'{x}',
+            index=unique_years.tolist().index(st.session_state.get('selected_year_half', max(unique_years))),
+            key='year_select_half'
+        )
+
+        historical_data['Half'] = historical_data['StartTimeDenmark'].dt.month.apply(lambda m: 1 if m <= 6 else 2)
+        half_names = {1: '1. halvår', 2: '2. halvår'}
+        unique_halves = sorted(historical_data[historical_data['StartTimeDenmark'].dt.year == selected_year_half]['Half'].unique())
+        half_options = [(h, half_names[h]) for h in unique_halves]
+
+        if 'selected_half' not in st.session_state or st.session_state['selected_half'] not in [h[0] for h in half_options]:
+            st.session_state['selected_half'] = min([h[0] for h in half_options]) if half_options else None
+
+        selected_half = st.selectbox(
+            "Vælg et halvår",
+            half_options,
+            format_func=lambda x: x[1],
+            index=[h[0] for h in half_options].index(st.session_state['selected_half']) if st.session_state['selected_half'] in [h[0] for h in half_options] else 0,
+            key='half_select'
+        )
+
+        st.session_state['selected_year_half'] = selected_year_half
+        st.session_state['selected_half'] = selected_half[0]
+
+        selected_half_number = selected_half[0]
+
+        historical_data_half = historical_data[
+            (historical_data['StartTimeDenmark'].dt.year == selected_year_half) &
+            (historical_data['Half'] == selected_half_number)
+        ]
+
+        if historical_data_half.empty:
+            st.error("Ingen data tilgængelig for det valgte halvår.")
+            st.stop()
+
+        avg_wait_time_half = historical_data_half['QueueDurationMinutes'].mean()
+        avg_wait_time_half = 0 if pd.isna(avg_wait_time_half) else avg_wait_time_half
+
+        col1 = st.columns([1])[0]
+
+        with col1:
+            ui.metric_card(
+                title="Gennemsnitlig ventetid (Halvår)",
+                content=convert_minutes_to_hms(avg_wait_time_half),
+                description=f"Ventetid i kø for {half_names[selected_half_number]} {selected_year_half}",
+            )
+
+        queue_data = historical_data_half[historical_data_half['ConversationEventType'].isin(['JoinedQueue', 'LeftQueue'])]
+        queue_data['QueueDurationHMS'] = queue_data['QueueDurationMinutes'].apply(convert_minutes_to_hms)
+        queue_data['Month'] = queue_data['StartTimeDenmark'].dt.month
+
+        month_names = {1: 'Januar', 2: 'Februar', 3: 'Marts', 4: 'April', 5: 'Maj', 6: 'Juni', 7: 'Juli', 8: 'August', 9: 'September', 10: 'Oktober', 11: 'November', 12: 'December'}
+        queue_data['MonthName'] = queue_data['Month'].map(month_names)
+
+        halv_måneder = {
+            1: ['Januar', 'Februar', 'Marts', 'April', 'Maj', 'Juni'],
+            2: ['Juli', 'August', 'September', 'Oktober', 'November', 'December']
+        }
+        current_half_months = halv_måneder[selected_half_number]
+
+        monthly_queue_data = queue_data.groupby('MonthName').agg({'QueueDurationMinutes': 'mean', 'QueueName': 'first'}).reset_index()
+
+        st.write(f"## Ventetid i kø (Halvår) - {selected_year_half}, {half_names[selected_half_number]}")
+        chart = alt.Chart(monthly_queue_data).mark_bar().encode(
+            x=alt.X('MonthName:O', title='Måned', sort=current_half_months),
+            y=alt.Y('QueueDurationMinutes:Q', title='Gennemsnitlig ventetid (minutter)'),
+            color=alt.Color('QueueName:N', title='Kø'),
+            tooltip=[
+                alt.Tooltip('MonthName:O', title='Måned'),
+                alt.Tooltip('QueueDurationMinutes:Q', title='Gennemsnitlig ventetid (minutter)'),
                 alt.Tooltip('QueueName:N', title='Kø')
             ]
         ).properties(
