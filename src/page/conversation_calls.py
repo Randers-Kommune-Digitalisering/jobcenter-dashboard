@@ -24,11 +24,11 @@ def show_conversation_call():
 
     with col_1:
         content_tabs = sac.tabs([
-            sac.TabsItem('Dag', tag='Dag'),
-            sac.TabsItem('Uge', tag='Uge'),
-            sac.TabsItem('Måned', tag='Måned'),
-            sac.TabsItem('Kvartal', tag='Kvartal'),
-            sac.TabsItem('Halvår', tag='Halvår'),
+            sac.TabsItem('Dag', tag='Dag', icon='calendar-day'),
+            sac.TabsItem('Uge', tag='Uge', icon='calendar-week'),
+            sac.TabsItem('Måned', tag='Måned', icon='calendar-month'),
+            sac.TabsItem('Kvartal', tag='Kvartal', icon='bi bi-calendar-minus'),
+            sac.TabsItem('Halvår', tag='Halvår', icon='calendar'),
         ], color='dark', size='md', position='top', align='start', use_container_width=True)
 
     if content_tabs == 'Dag':
