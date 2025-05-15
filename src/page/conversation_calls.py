@@ -32,62 +32,148 @@ def show_conversation_call():
         ], color='dark', size='md', position='top', align='start', use_container_width=True)
 
     if content_tabs == 'Dag':
-        unique_dates = historical_data['StartTimeDenmark'].dt.date.unique()
+        unique_dates = sorted(historical_data['StartTimeDenmark'].dt.date.unique())
 
         if len(unique_dates) == 0:
             st.error("Ingen data tilgængelig for den valgte kø.")
             st.stop()
 
-        if 'date_input' in st.session_state:
-            if st.session_state['date_input'] < min(unique_dates) or st.session_state['date_input'] > max(unique_dates):
-                st.session_state['date_input'] = max(unique_dates)
+        default_end = max(unique_dates)
+        if len(unique_dates) > 6:
+            default_start = unique_dates[-7]
+        else:
+            default_start = min(unique_dates)
 
-        selected_date = st.date_input(
-            "Vælg en dato",
-            value=st.session_state.get('date_input', max(unique_dates)),
-            min_value=min(unique_dates),
-            max_value=max(unique_dates),
-            key='date_input'
-        )
+        periode_mode = st.toggle("Brugerdefineret periode", value=False)
 
-        historical_data_today = historical_data[
-            (historical_data['StartTimeDenmark'].dt.date == selected_date) &
-            (historical_data['StartTimeDenmark'].dt.time.between(
-                datetime.strptime('05:00', '%H:%M').time(),
-                datetime.strptime('18:00', '%H:%M').time()
-            ))
-        ]
+        if periode_mode:
+            st.subheader("Vælg periode")
+            col1, col2 = st.columns(2)
 
-        answered_calls_today = historical_data_today[historical_data_today['Result'] == 'Answered']
-        answered_calls_today_count = answered_calls_today.shape[0]
+            session_start = st.session_state.get('start_date', default_start)
+            if session_start < min(unique_dates) or session_start > max(unique_dates):
+                session_start = default_start
+            session_end = st.session_state.get('end_date', default_end)
+            if session_end < min(unique_dates) or session_end > max(unique_dates):
+                session_end = default_end
 
-        col1 = st.columns([1])[0]
+            with col1:
+                start_date = st.date_input(
+                    "Startdato",
+                    value=session_start,
+                    min_value=min(unique_dates),
+                    max_value=max(unique_dates),
+                    key='start_date'
+                )
+            with col2:
+                end_date = st.date_input(
+                    "Slutdato",
+                    value=session_end,
+                    min_value=min(unique_dates),
+                    max_value=max(unique_dates),
+                    key='end_date'
+                )
 
-        with col1:
-            ui.metric_card(
-                title="Antal besvarede opkald (Dag)",
-                content=int(answered_calls_today_count),
-                description=f"Samlet antal opkald besvaret den {selected_date}."
+            if start_date > end_date:
+                st.warning("Startdato må ikke være efter slutdato.")
+            else:
+                mask = (
+                    (historical_data['StartTimeDenmark'].dt.date >= start_date) &
+                    (historical_data['StartTimeDenmark'].dt.date <= end_date) &
+                    (historical_data['StartTimeDenmark'].dt.time.between(
+                        datetime.strptime('05:00', '%H:%M').time(),
+                        datetime.strptime('18:00', '%H:%M').time()
+                    ))
+                )
+                period_data = historical_data[mask]
+                answered_calls_period = period_data[period_data['Result'] == 'Answered']
+                answered_calls_period_count = answered_calls_period.shape[0]
+
+                ui.metric_card(
+                    title="Antal besvarede opkald (Periode)",
+                    content=int(answered_calls_period_count),
+                    description=f"Samlet antal opkald besvaret fra {start_date.strftime('%d-%m-%Y')} til {end_date.strftime('%d-%m-%Y')}."
+                )
+
+                if not answered_calls_period.empty:
+                    if start_date == end_date:
+                        answered_calls_period['TimeInterval'] = answered_calls_period['StartTimeDenmark'].dt.floor('30T')
+                        interval_data = answered_calls_period.groupby(['TimeInterval']).size().reset_index(name='Antal opkald')
+                        st.write(f"## Resultat af opkald pr. tid ({start_date.strftime('%d-%m-%Y')})")
+                        chart = alt.Chart(interval_data).mark_bar().encode(
+                            x=alt.X('TimeInterval:T', title='Tidspunkt', axis=alt.Axis(format='%H:%M')),
+                            y=alt.Y('Antal opkald:Q', title='Antal opkald'),
+                            tooltip=[
+                                alt.Tooltip('TimeInterval:T', title='Tidspunkt', format='%H:%M'),
+                                alt.Tooltip('Antal opkald:Q', title='Antal opkald')
+                            ]
+                        ).properties(height=400, width=800)
+                    else:
+                        answered_calls_period['Date'] = answered_calls_period['StartTimeDenmark'].dt.date
+                        daily_data = answered_calls_period.groupby('Date').size().reset_index(name='Antal opkald')
+                        st.write(f"## Resultat af opkald pr. dag ({start_date.strftime('%d-%m-%Y')} – {end_date.strftime('%d-%m-%Y')})")
+                        chart = alt.Chart(daily_data).mark_bar().encode(
+                            x=alt.X('Date:T', title='Dato'),
+                            y=alt.Y('Antal opkald:Q', title='Antal opkald'),
+                            tooltip=[
+                                alt.Tooltip('Date:T', title='Dato', format='%d-%m-%Y'),
+                                alt.Tooltip('Antal opkald:Q', title='Antal opkald')
+                            ]
+                        ).properties(height=400, width=800)
+                    st.altair_chart(chart, use_container_width=True)
+                else:
+                    st.info("Ingen besvarede opkald i den valgte periode.")
+        else:
+            session_date = st.session_state.get('date_input', default_end)
+            if session_date < min(unique_dates) or session_date > max(unique_dates):
+                session_date = default_end
+
+            selected_date = st.date_input(
+                "Vælg en dato",
+                value=session_date,
+                min_value=min(unique_dates),
+                max_value=max(unique_dates),
+                key='date_input'
             )
 
-        answered_calls_today['TimeInterval'] = answered_calls_today['StartTimeDenmark'].dt.floor('30T')
-        interval_data = answered_calls_today.groupby(['TimeInterval']).size().reset_index(name='Antal opkald')
-
-        st.write(f"## Resultat af opkald (Dag) - {selected_date}")
-
-        chart = alt.Chart(interval_data).mark_bar().encode(
-            x=alt.X('TimeInterval:T', title='Tidspunkt', axis=alt.Axis(format='%H:%M')),
-            y=alt.Y('Antal opkald:Q', title='Antal opkald'),
-            tooltip=[
-                alt.Tooltip('TimeInterval:T', title='Tidspunkt', format='%H:%M'),
-                alt.Tooltip('Antal opkald:Q', title='Antal opkald')
+            historical_data_today = historical_data[
+                (historical_data['StartTimeDenmark'].dt.date == selected_date) &
+                (historical_data['StartTimeDenmark'].dt.time.between(
+                    datetime.strptime('05:00', '%H:%M').time(),
+                    datetime.strptime('18:00', '%H:%M').time()
+                ))
             ]
-        ).properties(
-            height=700,
-            width=900
-        )
 
-        st.altair_chart(chart, use_container_width=True)
+            answered_calls_today = historical_data_today[historical_data_today['Result'] == 'Answered']
+            answered_calls_today_count = answered_calls_today.shape[0]
+
+            col1 = st.columns([1])[0]
+
+            with col1:
+                ui.metric_card(
+                    title="Antal besvarede opkald (Dag)",
+                    content=int(answered_calls_today_count),
+                    description=f"Samlet antal opkald besvaret den {selected_date}."
+                )
+
+            answered_calls_today['TimeInterval'] = answered_calls_today['StartTimeDenmark'].dt.floor('30T')
+            interval_data = answered_calls_today.groupby(['TimeInterval']).size().reset_index(name='Antal opkald')
+
+            st.write(f"## Resultat af opkald (Dag) - {selected_date}")
+
+            chart = alt.Chart(interval_data).mark_bar().encode(
+                x=alt.X('TimeInterval:T', title='Tidspunkt', axis=alt.Axis(format='%H:%M')),
+                y=alt.Y('Antal opkald:Q', title='Antal opkald'),
+                tooltip=[
+                    alt.Tooltip('TimeInterval:T', title='Tidspunkt', format='%H:%M'),
+                    alt.Tooltip('Antal opkald:Q', title='Antal opkald')
+                ]
+            ).properties(
+                height=700,
+                width=900
+            )
+
+            st.altair_chart(chart, use_container_width=True)
 
     if content_tabs == 'Uge':
         unique_years = historical_data['StartTimeDenmark'].dt.year.unique()
