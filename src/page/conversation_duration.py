@@ -32,66 +32,163 @@ def show_conversation_duration():
         ], color='dark', size='md', position='top', align='start', use_container_width=True)
 
     if content_tabs == 'Dag':
-        unique_dates = historical_data['StartTimeDenmark'].dt.date.unique()
+        unique_dates = sorted(historical_data['StartTimeDenmark'].dt.date.unique())
 
         if len(unique_dates) == 0:
             st.error("Ingen data tilgængelig for den valgte kø.")
             st.stop()
 
-        if 'date_input' in st.session_state:
-            if st.session_state['date_input'] < min(unique_dates) or st.session_state['date_input'] > max(unique_dates):
-                st.session_state['date_input'] = max(unique_dates)
+        default_end = max(unique_dates)
+        if len(unique_dates) > 6:
+            default_start = unique_dates[-7]
+        else:
+            default_start = min(unique_dates)
 
-        selected_date = st.date_input(
-            "Vælg en dato",
-            value=st.session_state.get('date_input', max(unique_dates)),
-            min_value=min(unique_dates),
-            max_value=max(unique_dates),
-            key='date_input'
-        )
+        periode_mode = st.toggle("Brugerdefineret periode", value=False)
 
-        historical_data_today = historical_data[
-            (historical_data['StartTimeDenmark'].dt.date == selected_date) &
-            (historical_data['StartTimeDenmark'].dt.time.between(
-                datetime.strptime('05:00', '%H:%M').time(),
-                datetime.strptime('18:00', '%H:%M').time()
-            ))
-        ]
+        if periode_mode:
+            st.subheader("Vælg periode")
+            col1, col2 = st.columns(2)
 
-        if historical_data_today.empty:
-            st.error("Ingen data tilgængelig for den valgte dato.")
-            st.stop()
+            session_start = st.session_state.get('start_date', default_start)
+            if session_start < min(unique_dates) or session_start > max(unique_dates):
+                session_start = default_start
+            session_end = st.session_state.get('end_date', default_end)
+            if session_end < min(unique_dates) or session_end > max(unique_dates):
+                session_end = default_end
 
-        avg_duration_today = historical_data_today[historical_data_today['Result'] == 'Answered']['DurationMinutes'].mean()
-        avg_duration_today = 0 if pd.isna(avg_duration_today) else avg_duration_today
+            with col1:
+                start_date = st.date_input(
+                    "Startdato",
+                    value=session_start,
+                    min_value=min(unique_dates),
+                    max_value=max(unique_dates),
+                    key='start_date'
+                )
+            with col2:
+                end_date = st.date_input(
+                    "Slutdato",
+                    value=session_end,
+                    min_value=min(unique_dates),
+                    max_value=max(unique_dates),
+                    key='end_date'
+                )
 
-        col1 = st.columns([1])[0]
+            if start_date > end_date:
+                st.warning("Startdato må ikke være efter slutdato.")
+            else:
+                mask = (
+                    (historical_data['StartTimeDenmark'].dt.date >= start_date) &
+                    (historical_data['StartTimeDenmark'].dt.date <= end_date) &
+                    (historical_data['StartTimeDenmark'].dt.time.between(
+                        datetime.strptime('05:00', '%H:%M').time(),
+                        datetime.strptime('18:00', '%H:%M').time()
+                    ))
+                )
+                period_data = historical_data[mask]
+                answered_period = period_data[period_data['Result'] == 'Answered']
+                avg_duration_period = answered_period['DurationMinutes'].mean()
+                avg_duration_period = 0 if pd.isna(avg_duration_period) else avg_duration_period
 
-        with col1:
-            ui.metric_card(
-                title="Gennemsnitlig varighed af besvarede opkald(Dag)",
-                content=convert_minutes_to_hms(avg_duration_today),
-                description=f"Varighed af samtale for {selected_date}"
+                col1 = st.columns([1])[0]
+                with col1:
+                    ui.metric_card(
+                        title="Gennemsnitlig varighed af besvarede opkald (Periode)",
+                        content=convert_minutes_to_hms(avg_duration_period),
+                        description=f"Varighed af samtale fra {start_date.strftime('%d-%m-%Y')} til {end_date.strftime('%d-%m-%Y')}"
+                    )
+
+                if not answered_period.empty:
+                    if start_date == end_date:
+                        answered_period['TimeInterval'] = answered_period['StartTimeDenmark'].dt.floor('30T')
+                        chart_data = answered_period.groupby(['TimeInterval', 'AgentDisplayName']).agg({'DurationMinutes': 'mean'}).reset_index()
+                        st.write(f"## Varighed af samtale pr. tid ({start_date.strftime('%d-%m-%Y')})")
+                        chart = alt.Chart(chart_data).mark_bar().encode(
+                            x=alt.X('TimeInterval:T', title='Tidspunkt', axis=alt.Axis(format='%H:%M')),
+                            y=alt.Y('DurationMinutes:Q', title='Varighed (minutter)'),
+                            color=alt.Color('AgentDisplayName:N', title='Medarbejder'),
+                            tooltip=[
+                                alt.Tooltip('TimeInterval:T', title='Tidspunkt', format='%H:%M'),
+                                alt.Tooltip('DurationMinutes:Q', title='Varighed (minutter)'),
+                                alt.Tooltip('AgentDisplayName:N', title='Medarbejder')
+                            ]
+                        ).properties(height=700, width=900)
+                    else:
+                        answered_period['Date'] = answered_period['StartTimeDenmark'].dt.date
+                        chart_data = answered_period.groupby(['Date', 'AgentDisplayName']).agg({'DurationMinutes': 'mean'}).reset_index()
+                        st.write(f"## Varighed af samtale pr. dag ({start_date.strftime('%d-%m-%Y')} – {end_date.strftime('%d-%m-%Y')})")
+                        chart = alt.Chart(chart_data).mark_bar().encode(
+                            x=alt.X('Date:T', title='Dato'),
+                            y=alt.Y('DurationMinutes:Q', title='Varighed (minutter)'),
+                            color=alt.Color('AgentDisplayName:N', title='Medarbejder'),
+                            tooltip=[
+                                alt.Tooltip('Date:T', title='Dato', format='%d-%m-%Y'),
+                                alt.Tooltip('DurationMinutes:Q', title='Varighed (minutter)'),
+                                alt.Tooltip('AgentDisplayName:N', title='Medarbejder')
+                            ]
+                        ).properties(height=700, width=900)
+                    st.altair_chart(chart, use_container_width=True)
+                else:
+                    st.info("Ingen besvarede opkald i den valgte periode.")
+        else:
+            if 'date_input' in st.session_state:
+                if st.session_state['date_input'] < min(unique_dates) or st.session_state['date_input'] > max(unique_dates):
+                    st.session_state['date_input'] = max(unique_dates)
+
+            selected_date = st.date_input(
+                "Vælg en dato",
+                value=st.session_state.get('date_input', max(unique_dates)),
+                min_value=min(unique_dates),
+                max_value=max(unique_dates),
+                key='date_input'
             )
 
-        historical_data_today['TimeInterval'] = historical_data_today['StartTimeDenmark'].dt.floor('30T')
-        chart_data = historical_data_today.groupby(['TimeInterval', 'AgentDisplayName']).agg({'DurationMinutes': 'mean'}).reset_index()
-
-        st.write(f"## Varighed af samtale(Dag) - {selected_date}")
-        chart = alt.Chart(chart_data).mark_bar().encode(
-            x=alt.X('TimeInterval:T', title='Tidspunkt', axis=alt.Axis(format='%H:%M')),
-            y=alt.Y('DurationMinutes:Q', title='Varighed (minutter)'),
-            color=alt.Color('AgentDisplayName:N', title='Medarbejder'),
-            tooltip=[
-                alt.Tooltip('TimeInterval:T', title='Tidspunkt', format='%H:%M'),
-                alt.Tooltip('DurationMinutes:Q', title='Varighed (minutter)'),
-                alt.Tooltip('AgentDisplayName:N', title='Medarbejder')
+            historical_data_today = historical_data[
+                (historical_data['StartTimeDenmark'].dt.date == selected_date) &
+                (historical_data['StartTimeDenmark'].dt.time.between(
+                    datetime.strptime('05:00', '%H:%M').time(),
+                    datetime.strptime('18:00', '%H:%M').time()
+                ))
             ]
-        ).properties(
-            height=700,
-            width=900
-        )
-        st.altair_chart(chart, use_container_width=True)
+
+            if historical_data_today.empty:
+                st.error("Ingen data tilgængelig for den valgte dato.")
+                st.stop()
+
+            answered_today = historical_data_today[historical_data_today['Result'] == 'Answered']
+            avg_duration_today = answered_today['DurationMinutes'].mean()
+            avg_duration_today = 0 if pd.isna(avg_duration_today) else avg_duration_today
+
+            col1 = st.columns([1])[0]
+
+            with col1:
+                ui.metric_card(
+                    title="Gennemsnitlig varighed af besvarede opkald(Dag)",
+                    content=convert_minutes_to_hms(avg_duration_today),
+                    description=f"Varighed af samtale for {selected_date}"
+                )
+
+            if not answered_today.empty:
+                answered_today['TimeInterval'] = answered_today['StartTimeDenmark'].dt.floor('30T')
+                chart_data = answered_today.groupby(['TimeInterval', 'AgentDisplayName']).agg({'DurationMinutes': 'mean'}).reset_index()
+
+                st.write(f"## Varighed af samtale(Dag) - {selected_date}")
+                chart = alt.Chart(chart_data).mark_bar().encode(
+                    x=alt.X('TimeInterval:T', title='Tidspunkt', axis=alt.Axis(format='%H:%M')),
+                    y=alt.Y('DurationMinutes:Q', title='Varighed (minutter)'),
+                    color=alt.Color('AgentDisplayName:N', title='Medarbejder'),
+                    tooltip=[
+                        alt.Tooltip('TimeInterval:T', title='Tidspunkt', format='%H:%M'),
+                        alt.Tooltip('DurationMinutes:Q', title='Varighed (minutter)'),
+                        alt.Tooltip('AgentDisplayName:N', title='Medarbejder')
+                    ]
+                ).properties(
+                    height=700,
+                    width=900
+                )
+                st.altair_chart(chart, use_container_width=True)
+            else:
+                st.info("Ingen besvarede opkald på den valgte dato.")
 
     if content_tabs == 'Uge':
         unique_years = historical_data['StartTimeDenmark'].dt.year.unique()

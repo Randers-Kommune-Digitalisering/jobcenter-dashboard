@@ -32,65 +32,159 @@ def show_queue_time():
         ], color='dark', size='md', position='top', align='start', use_container_width=True)
 
     if content_tabs == 'Dag':
-        unique_dates = historical_data['StartTimeDenmark'].dt.date.unique()
+        unique_dates = sorted(historical_data['StartTimeDenmark'].dt.date.unique())
 
         if len(unique_dates) == 0:
             st.error("Ingen data tilgængelig for den valgte kø.")
             st.stop()
 
-        if 'date_input' in st.session_state:
-            if st.session_state['date_input'] < min(unique_dates) or st.session_state['date_input'] > max(unique_dates):
-                st.session_state['date_input'] = max(unique_dates)
+        default_end = max(unique_dates)
+        if len(unique_dates) > 6:
+            default_start = unique_dates[-7]
+        else:
+            default_start = min(unique_dates)
 
-        selected_date = st.date_input(
-            "Vælg en dato",
-            value=st.session_state.get('date_input', max(unique_dates)),
-            min_value=min(unique_dates),
-            max_value=max(unique_dates),
-            key='date_input'
-        )
+        periode_mode = st.toggle("Brugerdefineret periode", value=False)
 
-        historical_data_today = historical_data[
-            (historical_data['StartTimeDenmark'].dt.date == selected_date) &
-            (historical_data['StartTimeDenmark'].dt.time.between(
-                datetime.strptime('05:00', '%H:%M').time(),
-                datetime.strptime('18:00', '%H:%M').time()
-            ))
-        ]
+        if periode_mode:
+            st.subheader("Vælg periode")
+            col1, col2 = st.columns(2)
 
-        avg_wait_time_today = historical_data_today['QueueDurationMinutes'].mean()
-        avg_wait_time_today = 0 if pd.isna(avg_wait_time_today) else avg_wait_time_today
+            session_start = st.session_state.get('start_date', default_start)
+            if session_start < min(unique_dates) or session_start > max(unique_dates):
+                session_start = default_start
+            session_end = st.session_state.get('end_date', default_end)
+            if session_end < min(unique_dates) or session_end > max(unique_dates):
+                session_end = default_end
 
-        col1 = st.columns([1])[0]
+            with col1:
+                start_date = st.date_input(
+                    "Startdato",
+                    value=session_start,
+                    min_value=min(unique_dates),
+                    max_value=max(unique_dates),
+                    key='start_date'
+                )
+            with col2:
+                end_date = st.date_input(
+                    "Slutdato",
+                    value=session_end,
+                    min_value=min(unique_dates),
+                    max_value=max(unique_dates),
+                    key='end_date'
+                )
 
-        with col1:
-            ui.metric_card(
-                title="Gennemsnitlig ventetid(Dag)",
-                content=convert_minutes_to_hms(avg_wait_time_today),
-                description=f"Ventetid i kø for {selected_date}",
+            if start_date > end_date:
+                st.warning("Startdato må ikke være efter slutdato.")
+            else:
+                mask = (
+                    (historical_data['StartTimeDenmark'].dt.date >= start_date) &
+                    (historical_data['StartTimeDenmark'].dt.date <= end_date) &
+                    (historical_data['StartTimeDenmark'].dt.time.between(
+                        datetime.strptime('05:00', '%H:%M').time(),
+                        datetime.strptime('18:00', '%H:%M').time()
+                    ))
+                )
+                period_data = historical_data[mask]
+                avg_wait_time_period = period_data['QueueDurationMinutes'].mean()
+                avg_wait_time_period = 0 if pd.isna(avg_wait_time_period) else avg_wait_time_period
+
+                col1 = st.columns([1])[0]
+                with col1:
+                    ui.metric_card(
+                        title="Gennemsnitlig ventetid (Periode)",
+                        content=convert_minutes_to_hms(avg_wait_time_period),
+                        description=f"Ventetid i kø fra {start_date.strftime('%d-%m-%Y')} til {end_date.strftime('%d-%m-%Y')}",
+                    )
+
+                queue_data = period_data[period_data['ConversationEventType'].isin(['JoinedQueue', 'LeftQueue'])]
+                if not queue_data.empty:
+                    queue_data['QueueDurationHMS'] = queue_data['QueueDurationMinutes'].apply(convert_minutes_to_hms)
+                    if start_date == end_date:
+                        queue_data['TimeInterval'] = queue_data['StartTimeDenmark'].dt.floor('30T')
+                        interval_data = queue_data.groupby(['TimeInterval', 'QueueName']).agg({'QueueDurationMinutes': 'mean'}).reset_index()
+                        st.write(f"## Ventetid i kø pr. tid ({start_date.strftime('%d-%m-%Y')})")
+                        chart = alt.Chart(interval_data).mark_bar().encode(
+                            x=alt.X('TimeInterval:T', title='Tidspunkt', axis=alt.Axis(format='%H:%M')),
+                            y=alt.Y('QueueDurationMinutes:Q', title='Ventetid (minutter)'),
+                            color=alt.Color('QueueName:N', title='Kø'),
+                            tooltip=[
+                                alt.Tooltip('TimeInterval:T', title='Tidspunkt', format='%H:%M'),
+                                alt.Tooltip('QueueDurationMinutes:Q', title='Ventetid (minutter)'),
+                                alt.Tooltip('QueueName:N', title='Kø')
+                            ]
+                        ).properties(height=700, width=900)
+                    else:
+                        queue_data['Date'] = queue_data['StartTimeDenmark'].dt.date
+                        daily_queue_data = queue_data.groupby(['Date', 'QueueName']).agg({'QueueDurationMinutes': 'mean'}).reset_index()
+                        st.write(f"## Ventetid i kø pr. dag ({start_date.strftime('%d-%m-%Y')} – {end_date.strftime('%d-%m-%Y')})")
+                        chart = alt.Chart(daily_queue_data).mark_bar().encode(
+                            x=alt.X('Date:T', title='Dato'),
+                            y=alt.Y('QueueDurationMinutes:Q', title='Ventetid (minutter)'),
+                            color=alt.Color('QueueName:N', title='Kø'),
+                            tooltip=[
+                                alt.Tooltip('Date:T', title='Dato', format='%d-%m-%Y'),
+                                alt.Tooltip('QueueDurationMinutes:Q', title='Ventetid (minutter)'),
+                                alt.Tooltip('QueueName:N', title='Kø')
+                            ]
+                        ).properties(height=700, width=900)
+                    st.altair_chart(chart, use_container_width=True)
+                else:
+                    st.info("Ingen kø-data i den valgte periode.")
+        else:
+            if 'date_input' in st.session_state:
+                if st.session_state['date_input'] < min(unique_dates) or st.session_state['date_input'] > max(unique_dates):
+                    st.session_state['date_input'] = max(unique_dates)
+
+            selected_date = st.date_input(
+                "Vælg en dato",
+                value=st.session_state.get('date_input', max(unique_dates)),
+                min_value=min(unique_dates),
+                max_value=max(unique_dates),
+                key='date_input'
             )
 
-        queue_data = historical_data_today[historical_data_today['ConversationEventType'].isin(['JoinedQueue', 'LeftQueue'])]
-
-        queue_data['QueueDurationHMS'] = queue_data['QueueDurationMinutes'].apply(convert_minutes_to_hms)
-        queue_data['TimeInterval'] = queue_data['StartTimeDenmark'].dt.floor('30T')
-        interval_data = queue_data.groupby(['TimeInterval', 'QueueName']).agg({'QueueDurationMinutes': 'mean'}).reset_index()
-
-        st.write(f"## Ventetid i kø (Dag) - {selected_date}")
-        chart = alt.Chart(interval_data).mark_bar().encode(
-            x=alt.X('TimeInterval:T', title='Tidspunkt', axis=alt.Axis(format='%H:%M')),
-            y=alt.Y('QueueDurationMinutes:Q', title='Ventetid (minutter)'),
-            color=alt.Color('QueueName:N', title='Kø'),
-            tooltip=[
-                alt.Tooltip('TimeInterval:T', title='Tidspunkt', format='%H:%M'),
-                alt.Tooltip('QueueDurationMinutes:Q', title='Ventetid (minutter)'),
-                alt.Tooltip('QueueName:N', title='Kø')
+            historical_data_today = historical_data[
+                (historical_data['StartTimeDenmark'].dt.date == selected_date) &
+                (historical_data['StartTimeDenmark'].dt.time.between(
+                    datetime.strptime('05:00', '%H:%M').time(),
+                    datetime.strptime('18:00', '%H:%M').time()
+                ))
             ]
-        ).properties(
-            height=700,
-            width=900
-        )
-        st.altair_chart(chart, use_container_width=True)
+
+            avg_wait_time_today = historical_data_today['QueueDurationMinutes'].mean()
+            avg_wait_time_today = 0 if pd.isna(avg_wait_time_today) else avg_wait_time_today
+
+            col1 = st.columns([1])[0]
+
+            with col1:
+                ui.metric_card(
+                    title="Gennemsnitlig ventetid(Dag)",
+                    content=convert_minutes_to_hms(avg_wait_time_today),
+                    description=f"Ventetid i kø for {selected_date}",
+                )
+
+            queue_data = historical_data_today[historical_data_today['ConversationEventType'].isin(['JoinedQueue', 'LeftQueue'])]
+
+            queue_data['QueueDurationHMS'] = queue_data['QueueDurationMinutes'].apply(convert_minutes_to_hms)
+            queue_data['TimeInterval'] = queue_data['StartTimeDenmark'].dt.floor('30T')
+            interval_data = queue_data.groupby(['TimeInterval', 'QueueName']).agg({'QueueDurationMinutes': 'mean'}).reset_index()
+
+            st.write(f"## Ventetid i kø (Dag) - {selected_date}")
+            chart = alt.Chart(interval_data).mark_bar().encode(
+                x=alt.X('TimeInterval:T', title='Tidspunkt', axis=alt.Axis(format='%H:%M')),
+                y=alt.Y('QueueDurationMinutes:Q', title='Ventetid (minutter)'),
+                color=alt.Color('QueueName:N', title='Kø'),
+                tooltip=[
+                    alt.Tooltip('TimeInterval:T', title='Tidspunkt', format='%H:%M'),
+                    alt.Tooltip('QueueDurationMinutes:Q', title='Ventetid (minutter)'),
+                    alt.Tooltip('QueueName:N', title='Kø')
+                ]
+            ).properties(
+                height=700,
+                width=900
+            )
+            st.altair_chart(chart, use_container_width=True)
 
     if content_tabs == 'Uge':
         unique_years = historical_data['StartTimeDenmark'].dt.year.unique()
