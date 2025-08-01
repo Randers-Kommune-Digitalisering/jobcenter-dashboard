@@ -59,7 +59,8 @@ def get_zylinc_table_names():
         "zylinc_jobcenter_sygedagpenge_7732",
         "zylinc_jobcenter_team integration_7738",
         "zylinc_jobcenter_udviklingshuset_7735",
-        "zylinc_hovednummer_89151515"
+        "zylinc_hovednummer_89151515",
+        "zylinc_omstillingen"
     ]
     return table_names
 
