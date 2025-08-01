@@ -7,6 +7,7 @@ from page.operations import show_operations
 from utils.logo import get_logo
 from page.live import display_live_data
 from page.conversation_duration import show_conversation_duration
+from page.conversation_activity import show_conversation_activity
 
 
 st.set_page_config(page_title="Jobcenter", page_icon="assets/favicon.ico", layout="wide")
@@ -24,8 +25,8 @@ with st.sidebar:
     if selected_main == "Zylinc":
         selected_zylinc = option_menu(
             "Zylinc",
-            ['Live Data', 'Varighed af samtale', 'Resultat af opkald', 'Ventetid pr opkald', 'Antal af samtaler'],
-            icons=['broadcast', 'bi bi-clock-history', 'bi bi-check2-square', 'hourglass-split', 'bi bi-telephone-outbound-fill'],
+            ['Live Data', 'Varighed af samtale', 'Resultat af opkald', 'Ventetid pr opkald', 'Antal af samtaler', 'Opkaldsaktivitet'],
+            icons=['broadcast', 'bi bi-clock-history', 'bi bi-check2-square', 'hourglass-split', 'bi bi-telephone-outbound-fill', 'bi bi-telephone-minus-fill'],
             menu_icon="headset",
             default_index=0,
         )
@@ -49,6 +50,9 @@ if selected_main == "Zylinc":
         show_queue_time()
     elif selected_zylinc == 'Antal af samtaler':
         show_conversation_call()
+    elif selected_zylinc == 'Opkaldsaktivitet':
+        show_conversation_activity()
+
 
 elif selected_main == "FrontDesk":
     if selected_betjeninger == 'Betjeninger':
