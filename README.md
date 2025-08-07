@@ -1,41 +1,45 @@
-# Steamlit template projekt
-Template til nye Python app projekter som skal visualiseres med ```Streamlit```
+# Jobcenter Dashboard `README.md`
+[**Formål**](#formål) | [**Opbygning af dashboard**](#opbygning) | [**Afhængigheder**](#afh%C3%A6ngigheder) 
 
-## Kørsel af Streamlit applikation
-Start Applikationen: ```streamlit run main.py```
+## Formål
 
-Bygge docker image: ```docker build -t streamlit .```
+Formålet med dashboardet er at vise opkaldsstatistik med data fra Zylinc over flere Jobcenter køer. Zylinc data for de forskellige køer hentes fra en Postgres DB, samt Live data fra Zylinc API'et
 
-Kør container ud fra det image man byggede: ```docker run -p 8080:8080 streamlit```
+## Opbygning af dashboard
+Jobcenter Dashboardet består af følgende 6 sider: 
+
+- (`Side 1: Live Data`) Siden viser igangværende Live opkald fra Jobcenter køen som kommer fra Zylinc API'et  
+- (`Side 2: Varighed af samtale`) Siden visualiserer varigheden af en samtale i en graf baseret på en specifik Dag, Uge, Måned, Kvartal og Halvår. Samt en metric til at vise den Gennemsnitlig varighed af besvarede opkald
+- (`Side 3: Resultat af samtale`) Siden visualiserer resultat af en samtale(Modtaget, Besvarede og mistede) i en graf baseret på en specifik Dag, Uge, Måned, Kvartal og Halvår. Samt metrics til at vise (`Antal modtagne opkald, Antal besvarede opkald, Antal mistede opkald`)
+- (`Side 4: Ventetid pr opkald`) Siden visualiserer ventetiden af et opkald i en graf baseret på en specifik Dag, Uge, Måned, Kvartal og Halvår. Samt en metric til at vise den Gennemsnitlig ventetid pr kald. 
+- (`Side 5: Antal af samtaler`) Siden visualiserer antal af samtaler i en graf baseret på en specifik Dag, Uge, Måned, Kvartal og Halvår. Samt en metric til at vise antal besvarede opkald
+- (`Side 6: Opkaldsaktivitet`) Siden visualiserer hvornår på dagen der har været mest travlt i en graf baseret på en specifik Dag, Uge, Måned, Kvartal og Halvår. Samt en metric til at vise det tidpunktet der har været flest opkaldsaktivitet.
 
 
-## Valg af DatabaseClient
-* DatbaseClient bruges til at håndtere 3 typer for databaser: ```mssql```, ```mariadb``` og ```postgresql```
-* Eksempel på brug af en mssql database til at visualisere charts:
+**Dataflow:**
+- SQL kald til Postgres DB → Zylinc API → Visualiserer data
+
+## Afhængigheder
+
+Installér afhængigheder med:
+
+```bash
+pip install -r src/requirements.txt
 ```
-from utils.database import DatabaseClient # Uncomment when using database
-from utils.config import DB_HOST, DB_USER, DB_PASS, DB_NAME # Uncomment when using database
 
-db_client = DatabaseClient(db_type="mssql" ,database=DB_NAME, username=DB_USER, password=DB_PASS, host=DB_HOST) # Uncomment when using database
+:key: | **Miljøvariabler**
 
-pd.set_option('display.max_columns', None)
-st.set_page_config(page_title="Streamlit-Template", layout="wide")
-st.title("Streamlit-Template")
-chart_tab, csv_tab, db_tab = st.tabs(
-    ["Template til grafer", "Fra CSV til Charts", "Fra DB til Charts"]
-)
+Zylinc API
+- `ZYLINC_URL` URL til API
+- `ZYLINC_REALM` Realm til API
+- `ZYLINC_CLIENT` Client ID til API
+- `ZYLINC_SECRET` Secret til API
 
-with db_tab:
-    db_tab_df = pd.read_sql("SELECT * FROM InstalledSoftware", db_client.get_connection())
-    db_tab_df['InstallDate'] = pd.to_datetime(db_tab_df['InstallDate'], errors='coerce')
-    db_tab_df = db_tab_df[['ComputerName', 'DisplayName', 'DisplayVersion', 'InstallDate', 'Publisher', 'UpdateTimeStamp']]
+Postgres DB
+- `QUEUES` Liste med tabel navne på Jobcenter køer fra Postgres DB'en
+- `BYGGESAGER_POSTGRES_DB_USER` Brugernavn til Zylinc Postgres DB
+- `ZYLINC_POSTGRES_DB_PASS` Adgangskode til Zylinc Postgres DB
+- `ZYLINC_POSTGRES_DB_HOST` Hostname til Zylinc Postgres DB
+- `ZYLINC_POSTGRES_DB_DATABASE` Databasenavn til Zylinc Postgres DB
+- `ZYLINC_POSTGRES_DB_PORT` Portnummer til Zylinc Postgres DB
 
-    selected_computer = st.selectbox("Select a Computer", db_tab_df['ComputerName'].unique(), key="db_tab_computer")
-    computer_df = db_tab_df[db_tab_df['ComputerName'] == selected_computer]
-    update_time = computer_df.UpdateTimeStamp.mean().round('1s').strftime('%d/%m-%Y %H:%M:%S')
-
-    st.markdown(f'''Installed Software for: :blue-background[{selected_computer}] - :red-background[{update_time}] ''')
-
-    st.markdown(computer_df.drop(columns=['ComputerName', 'UpdateTimeStamp']).to_html(index=False), unsafe_allow_html=True)
-
-```
