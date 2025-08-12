@@ -172,7 +172,7 @@ def show_conversation_duration():
                 answered_today['TimeInterval'] = answered_today['StartTimeDenmark'].dt.floor('30T')
                 chart_data = answered_today.groupby(['TimeInterval', 'AgentDisplayName']).agg({'DurationMinutes': 'mean'}).reset_index()
 
-                st.write(f"## Varighed af samtale(Dag) - {selected_date}")
+                st.header(f"Varighed af samtale(Dag) - {selected_date}", divider="gray")
                 chart = alt.Chart(chart_data).mark_bar().encode(
                     x=alt.X('TimeInterval:T', title='Tidspunkt', axis=alt.Axis(format='%H:%M')),
                     y=alt.Y('DurationMinutes:Q', title='Varighed (minutter)'),
@@ -265,7 +265,7 @@ def show_conversation_duration():
 
         chart_data = chart_data.groupby(['DayOfWeek', 'AgentDisplayName']).agg({'DurationMinutes': 'sum'}).reset_index()
 
-        st.write(f"## Varighed af samtale (Uge) - {selected_year_week}, Uge {selected_week}")
+        st.header(f"Varighed af samtale (Uge) - {selected_year_week}, Uge {selected_week}", divider="gray")
         chart = alt.Chart(chart_data).mark_bar().encode(
             x=alt.X('DayOfWeek:O', title='Ugedag', sort=all_weekdays),
             y=alt.Y('DurationMinutes:Q', title='Varighed (minutter)'),
@@ -341,7 +341,7 @@ def show_conversation_duration():
 
         daily_data = historical_data_month.groupby(['Day', 'AgentDisplayName']).agg({'DurationMinutes': 'mean'}).reset_index()
 
-        st.write(f"## Varighed af samtale (Måned) - {month_names[selected_month_number]} {selected_year_month}")
+        st.header(f"Varighed af samtale (Måned) - {month_names[selected_month_number]} {selected_year_month}", divider="gray")
         chart = alt.Chart(daily_data).mark_bar().encode(
             x=alt.X('Day:O', title='Dag', axis=alt.Axis(format='d')),
             y=alt.Y('DurationMinutes:Q', title='Varighed (minutter)'),
@@ -426,7 +426,7 @@ def show_conversation_duration():
         }
         current_quarter_months = kvartal_måneder[selected_quarter_number]
 
-        st.write(f"## Varighed af samtale (Kvartal) - {quarter_names[selected_quarter_number]} {selected_year_quarter}")
+        st.header(f"Varighed af samtale (Kvartal) - {quarter_names[selected_quarter_number]} {selected_year_quarter}", divider="gray")
         chart = alt.Chart(monthly_data).mark_bar().encode(
             x=alt.X('MonthName:O', title='Måned', sort=current_quarter_months),
             y=alt.Y('DurationMinutes:Q', title='Varighed (minutter)'),
@@ -509,7 +509,7 @@ def show_conversation_duration():
         }
         current_half_months = halv_måneder[selected_half_number]
 
-        st.write(f"## Varighed af samtale (Halvår) - {half_names[selected_half_number]} {selected_year_half}")
+        st.header(f"Varighed af samtale (Halvår) - {half_names[selected_half_number]} {selected_year_half}", divider="gray")
         chart = alt.Chart(monthly_data).mark_bar().encode(
             x=alt.X('MonthName:O', title='Måned', sort=current_half_months),
             y=alt.Y('DurationMinutes:Q', title='Varighed (minutter)'),

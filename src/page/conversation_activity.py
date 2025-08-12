@@ -104,7 +104,7 @@ def show_conversation_activity():
                 peak_times_str = ', '.join(peak_times)
                 st.info(f"**Flest opkald modtaget kl.:** {peak_times_str} ({max_count} opkald)")
 
-        st.write(f"## Opkaldsaktivitet fordelt på døgnet ({selected_date.strftime('%d-%m-%Y')})")
+        st.header(f"Opkaldsaktivitet fordelt på døgnet ({selected_date.strftime('%d-%m-%Y')})", divider="gray")
         plot_activity(data_day, 'StartTimeDenmark')
 
     if content_tabs == 'Uge':
@@ -160,7 +160,7 @@ def show_conversation_activity():
                 peak_times_str = ', '.join(peak_times)
                 st.info(f"**Flest opkald modtaget kl.:** {peak_times_str} ({max_count} opkald)")
 
-        st.write(f"## Opkaldsaktivitet fordelt på døgnet (Uge {selected_week}, {selected_year})")
+        st.header(f"Opkaldsaktivitet fordelt på døgnet (Uge {selected_week}, {selected_year})", divider="gray")
         plot_activity(data_week, 'StartTimeDenmark')
 
     if content_tabs == 'Måned':
@@ -215,7 +215,7 @@ def show_conversation_activity():
                 peak_times_str = ', '.join(peak_times)
                 st.info(f"**Flest opkald modtaget kl.:** {peak_times_str} ({max_count} opkald)")
 
-        st.write(f"## Opkaldsaktivitet fordelt på døgnet ({month_names[selected_month]} {selected_year})")
+        st.header(f"Opkaldsaktivitet fordelt på døgnet ({month_names[selected_month]} {selected_year})", divider="gray")
         plot_activity(data_month, 'StartTimeDenmark')
 
     if content_tabs == 'Kvartal':
@@ -271,7 +271,7 @@ def show_conversation_activity():
                 peak_times_str = ', '.join(peak_times)
                 st.info(f"**Flest opkald modtaget kl.:** {peak_times_str} ({max_count} opkald)")
 
-        st.write(f"## Opkaldsaktivitet fordelt på døgnet ({quarter_names[selected_quarter]} {selected_year})")
+        st.header(f"Opkaldsaktivitet fordelt på døgnet ({quarter_names[selected_quarter]} {selected_year})", divider="gray")
         plot_activity(data_quarter, 'StartTimeDenmark')
 
     if content_tabs == 'Halvår':
@@ -327,5 +327,5 @@ def show_conversation_activity():
                 peak_times_str = ', '.join(peak_times)
                 st.info(f"**Flest opkald modtaget kl.:** {peak_times_str} ({max_count} opkald)")
 
-        st.write(f"## Opkaldsaktivitet fordelt på døgnet ({half_names[selected_half]} {selected_year})")
+        st.header(f"Opkaldsaktivitet fordelt på døgnet ({half_names[selected_half]} {selected_year})", divider="gray")
         plot_activity(data_half, 'StartTimeDenmark')

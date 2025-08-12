@@ -117,7 +117,7 @@ def show_queue_time():
                     else:
                         queue_data['Date'] = queue_data['StartTimeDenmark'].dt.date
                         daily_queue_data = queue_data.groupby(['Date', 'QueueName']).agg({'QueueDurationMinutes': 'mean'}).reset_index()
-                        st.write(f"## Ventetid i kø pr. dag ({start_date.strftime('%d-%m-%Y')} – {end_date.strftime('%d-%m-%Y')})")
+                        st.header(f"Ventetid i kø pr. dag ({start_date.strftime('%d-%m-%Y')} – {end_date.strftime('%d-%m-%Y')})", divider="gray")
                         chart = alt.Chart(daily_queue_data).mark_bar().encode(
                             x=alt.X('Date:T', title='Dato'),
                             y=alt.Y('QueueDurationMinutes:Q', title='Ventetid (minutter)'),
@@ -170,7 +170,7 @@ def show_queue_time():
             queue_data['TimeInterval'] = queue_data['StartTimeDenmark'].dt.floor('30T')
             interval_data = queue_data.groupby(['TimeInterval', 'QueueName']).agg({'QueueDurationMinutes': 'mean'}).reset_index()
 
-            st.write(f"## Ventetid i kø (Dag) - {selected_date}")
+            st.header(f"Ventetid i kø (Dag) - {selected_date}", divider="gray")
             chart = alt.Chart(interval_data).mark_bar().encode(
                 x=alt.X('TimeInterval:T', title='Tidspunkt', axis=alt.Axis(format='%H:%M')),
                 y=alt.Y('QueueDurationMinutes:Q', title='Ventetid (minutter)'),
@@ -253,7 +253,7 @@ def show_queue_time():
         queue_data['Day'] = queue_data['StartTimeDenmark'].dt.weekday.map(weekdays)
         daily_queue_data = queue_data.groupby('Day').agg({'QueueDurationMinutes': 'sum', 'QueueName': 'first'}).reset_index()
 
-        st.write(f"## Ventetid i kø (Uge) - {selected_year_week}, Uge {selected_week}")
+        st.header(f"Ventetid i kø (Uge) - {selected_year_week}, Uge {selected_week}", divider="gray")
         chart = alt.Chart(daily_queue_data).mark_bar().encode(
             x=alt.X('Day:N', title='Dag', sort=['Mandag', 'Tirsdag', 'Onsdag', 'Torsdag', 'Fredag']),
             y=alt.Y('QueueDurationMinutes:Q', title='Ventetid (minutter)'),
@@ -335,7 +335,7 @@ def show_queue_time():
         queue_data['Day'] = queue_data['StartTimeDenmark'].dt.day
         daily_queue_data = queue_data.groupby('Day').agg({'QueueDurationMinutes': 'sum', 'QueueName': 'first'}).reset_index()
 
-        st.write(f"## Ventetid i kø (Måned) - {selected_year_month}, Måned {month_names[selected_month_number]}")
+        st.header(f"Ventetid i kø (Måned) - {selected_year_month}, Måned {month_names[selected_month_number]}", divider="gray")
         chart = alt.Chart(daily_queue_data).mark_bar().encode(
             x=alt.X('Day:O', title='Dag', axis=alt.Axis(format='d')),
             y=alt.Y('QueueDurationMinutes:Q', title='Ventetid (minutter)'),
@@ -429,7 +429,7 @@ def show_queue_time():
 
         monthly_queue_data = queue_data.groupby('MonthName').agg({'QueueDurationMinutes': 'mean', 'QueueName': 'first'}).reset_index()
 
-        st.write(f"## Ventetid i kø (Kvartal) - {selected_year_quarter}, {quarter_names[selected_quarter_number]}")
+        st.header(f"Ventetid i kø (Kvartal) - {selected_year_quarter}, {quarter_names[selected_quarter_number]}", divider="gray")
         chart = alt.Chart(monthly_queue_data).mark_bar().encode(
             x=alt.X('MonthName:O', title='Måned', sort=current_quarter_months),
             y=alt.Y('QueueDurationMinutes:Q', title='Gennemsnitlig ventetid (minutter)'),
@@ -521,7 +521,7 @@ def show_queue_time():
 
         monthly_queue_data = queue_data.groupby('MonthName').agg({'QueueDurationMinutes': 'mean', 'QueueName': 'first'}).reset_index()
 
-        st.write(f"## Ventetid i kø (Halvår) - {selected_year_half}, {half_names[selected_half_number]}")
+        st.header(f"Ventetid i kø (Halvår) - {selected_year_half}, {half_names[selected_half_number]}", divider="gray")
         chart = alt.Chart(monthly_queue_data).mark_bar().encode(
             x=alt.X('MonthName:O', title='Måned', sort=current_half_months),
             y=alt.Y('QueueDurationMinutes:Q', title='Gennemsnitlig ventetid (minutter)'),

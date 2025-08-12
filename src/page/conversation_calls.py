@@ -111,7 +111,7 @@ def show_conversation_call():
                     else:
                         answered_calls_period['Date'] = answered_calls_period['StartTimeDenmark'].dt.date
                         daily_data = answered_calls_period.groupby('Date').size().reset_index(name='Antal opkald')
-                        st.write(f"## Resultat af opkald pr. dag ({start_date.strftime('%d-%m-%Y')} – {end_date.strftime('%d-%m-%Y')})")
+                        st.header(f"## Resultat af opkald pr. dag ({start_date.strftime('%d-%m-%Y')} – {end_date.strftime('%d-%m-%Y')})", divider="gray")
                         chart = alt.Chart(daily_data).mark_bar().encode(
                             x=alt.X('Date:T', title='Dato'),
                             y=alt.Y('Antal opkald:Q', title='Antal opkald'),
@@ -159,8 +159,7 @@ def show_conversation_call():
             answered_calls_today['TimeInterval'] = answered_calls_today['StartTimeDenmark'].dt.floor('30T')
             interval_data = answered_calls_today.groupby(['TimeInterval']).size().reset_index(name='Antal opkald')
 
-            st.write(f"## Resultat af opkald (Dag) - {selected_date}")
-
+            st.header(f"Resultat af opkald (Dag) - {selected_date}", divider="gray")
             chart = alt.Chart(interval_data).mark_bar().encode(
                 x=alt.X('TimeInterval:T', title='Tidspunkt', axis=alt.Axis(format='%H:%M')),
                 y=alt.Y('Antal opkald:Q', title='Antal opkald'),
@@ -249,8 +248,7 @@ def show_conversation_call():
             ordered=True
         )
 
-        st.write(f"## Resultat af opkald (Uge) - {selected_year_week}, Uge {selected_week}")
-
+        st.header(f"Resultat af opkald (Uge) - {selected_year_week}, Uge {selected_week}", divider="gray")
         chart = alt.Chart(daily_data).mark_bar().encode(
             x=alt.X('DayOfWeek:O', title='Ugedag', sort=all_weekdays),
             y='Antal opkald:Q',
@@ -315,8 +313,7 @@ def show_conversation_call():
         daily_data = answered_calls_month.groupby(['Day']).size().reset_index(name='Antal opkald')
         daily_data['Day'] = daily_data['Day'].dt.day
 
-        st.write(f"## Resultat af opkald (Måned) - {selected_year_month}, Måned {month_names[selected_month_number]}")
-
+        st.header(f"Resultat af opkald (Måned) - {selected_year_month}, Måned {month_names[selected_month_number]}", divider="gray")
         chart = alt.Chart(daily_data).mark_bar().encode(
             x=alt.X('Day:O', title='Månedsdag'),
             y='Antal opkald:Q',
@@ -395,8 +392,7 @@ def show_conversation_call():
 
         monthly_data = answered_calls_quarter.groupby('MonthName').size().reset_index(name='Antal opkald')
 
-        st.write(f"## Resultat af opkald (Kvartal) - {selected_year_quarter}, {quarter_names[selected_quarter_number]}")
-
+        st.header(f"Resultat af opkald (Kvartal) - {selected_year_quarter}, {quarter_names[selected_quarter_number]}", divider="gray")
         chart = alt.Chart(monthly_data).mark_bar().encode(
             x=alt.X('MonthName:O', title='Måned', sort=current_quarter_months),
             y=alt.Y('Antal opkald:Q', title='Antal opkald'),
@@ -476,8 +472,7 @@ def show_conversation_call():
 
         monthly_data = answered_calls_half.groupby('MonthName').size().reset_index(name='Antal opkald')
 
-        st.write(f"## Resultat af opkald (Halvår) - {selected_year_half}, {half_names[selected_half_number]}")
-
+        st.header(f"Resultat af opkald (Halvår) - {selected_year_half}, {half_names[selected_half_number]}", divider="gray")
         chart = alt.Chart(monthly_data).mark_bar().encode(
             x=alt.X('MonthName:O', title='Måned', sort=current_half_months),
             y=alt.Y('Antal opkald:Q', title='Antal opkald'),
