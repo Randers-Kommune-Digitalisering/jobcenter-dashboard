@@ -194,6 +194,11 @@ def show_conversation_result():
                     description=f"Samlet antal opkald mistet den {selected_date}."
                 )
 
+            historical_data_today["Result"] = historical_data_today["Result"].replace({
+                "Answered": "Besvaret",
+                "Missed": "Ikke besvaret"
+            })
+
             historical_data_today['TimeInterval'] = historical_data_today['StartTimeDenmark'].dt.floor('30T')
             interval_data = historical_data_today.groupby(['TimeInterval', 'Result']).size().reset_index(name='Antal opkald')
 
@@ -202,7 +207,7 @@ def show_conversation_result():
             chart = alt.Chart(interval_data).mark_bar().encode(
                 x=alt.X('TimeInterval:T', title='Tidspunkt', axis=alt.Axis(format='%H:%M')),
                 y=alt.Y('Antal opkald:Q', title='Antal opkald'),
-                color='Result:N',
+                color=alt.Color('Result:N', title='Resultat'),
                 tooltip=[
                     alt.Tooltip('TimeInterval:T', title='Tidspunkt', format='%H:%M'),
                     alt.Tooltip('Antal opkald:Q', title='Antal opkald'),
@@ -278,6 +283,11 @@ def show_conversation_result():
                 description=f"Samlet antal opkald mistet i Uge {selected_week}."
             )
 
+        historical_data_week["Result"] = historical_data_week["Result"].replace({
+            "Answered": "Besvaret",
+            "Missed": "Ikke besvaret"
+        })
+
         historical_data_week['Day'] = historical_data_week['StartTimeDenmark'].dt.floor('D')
         daily_data = historical_data_week.groupby(['Day', 'Result']).size().reset_index(name='Antal opkald')
 
@@ -306,7 +316,7 @@ def show_conversation_result():
         chart = alt.Chart(daily_data).mark_bar().encode(
             x=alt.X('DayOfWeek:O', title='Ugedag', sort=all_weekdays),
             y='Antal opkald:Q',
-            color='Result:N',
+            color=alt.Color('Result:N', title='Resultat'),
         )
 
         st.altair_chart(chart, use_container_width=True)
@@ -375,6 +385,11 @@ def show_conversation_result():
                 description=f"Samlet antal opkald mistet i {month_names[selected_month_number]} {selected_year_month}."
             )
 
+        historical_data_month["Result"] = historical_data_month["Result"].replace({
+            "Answered": "Besvaret",
+            "Missed": "Ikke besvaret"
+        })
+
         historical_data_month['Day'] = historical_data_month['StartTimeDenmark'].dt.floor('D')
         daily_data = historical_data_month.groupby(['Day', 'Result']).size().reset_index(name='Antal opkald')
         daily_data['Day'] = daily_data['Day'].dt.day
@@ -384,7 +399,7 @@ def show_conversation_result():
         chart = alt.Chart(daily_data).mark_bar().encode(
             x=alt.X('Day:O', title='Månedsdag'),
             y='Antal opkald:Q',
-            color='Result:N'
+            color=alt.Color('Result:N', title='Resultat'),
         )
 
         st.altair_chart(chart, use_container_width=True)
@@ -457,6 +472,11 @@ def show_conversation_result():
                 description=f"Samlet antal opkald mistet i {quarter_names[selected_quarter_number]} {selected_year_quarter}."
             )
 
+        historical_data_quarter["Result"] = historical_data_quarter["Result"].replace({
+            "Answered": "Besvaret",
+            "Missed": "Ikke besvaret"
+        })
+
         historical_data_quarter['Month'] = historical_data_quarter['StartTimeDenmark'].dt.month
         month_names = {1: 'Januar', 2: 'Februar', 3: 'Marts', 4: 'April', 5: 'Maj', 6: 'Juni', 7: 'Juli', 8: 'August', 9: 'September', 10: 'Oktober', 11: 'November', 12: 'December'}
         monthly_data = historical_data_quarter.groupby(['Month', 'Result']).size().reset_index(name='Antal opkald')
@@ -475,7 +495,7 @@ def show_conversation_result():
         chart = alt.Chart(monthly_data).mark_bar().encode(
             x=alt.X('MonthName:O', title='Måned', sort=current_quarter_months),
             y='Antal opkald:Q',
-            color='Result:N'
+            color=alt.Color('Result:N', title='Resultat'),
         )
 
         st.altair_chart(chart, use_container_width=True)
@@ -548,6 +568,11 @@ def show_conversation_result():
                 description=f"Samlet antal opkald mistet i {half_names[selected_half_number]} {selected_year_half}."
             )
 
+        historical_data_half["Result"] = historical_data_half["Result"].replace({
+            "Answered": "Besvaret",
+            "Missed": "Ikke besvaret"
+        })
+
         historical_data_half['Month'] = historical_data_half['StartTimeDenmark'].dt.month
         month_names = {1: 'Januar', 2: 'Februar', 3: 'Marts', 4: 'April', 5: 'Maj', 6: 'Juni', 7: 'Juli', 8: 'August', 9: 'September', 10: 'Oktober', 11: 'November', 12: 'December'}
         monthly_data = historical_data_half.groupby(['Month', 'Result']).size().reset_index(name='Antal opkald')
@@ -564,7 +589,7 @@ def show_conversation_result():
         chart = alt.Chart(monthly_data).mark_bar().encode(
             x=alt.X('MonthName:O', title='Måned', sort=current_half_months),
             y='Antal opkald:Q',
-            color='Result:N'
+            color=alt.Color('Result:N', title='Resultat'),
         )
 
         st.altair_chart(chart, use_container_width=True)

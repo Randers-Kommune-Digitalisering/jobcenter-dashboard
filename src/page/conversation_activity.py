@@ -52,7 +52,7 @@ def show_conversation_activity():
                 axis=alt.Axis(labelAngle=0)
             ),
             y=alt.Y('Antal opkald:Q', title='Antal opkald'),
-            color='Result:N',
+            color=alt.Color('Result:N', title='Resultat'),
             tooltip=[
                 alt.Tooltip('TimeInterval:O', title='Tidspunkt på dagen'),
                 alt.Tooltip('Antal opkald:Q', title='Antal opkald'),
@@ -88,6 +88,11 @@ def show_conversation_activity():
                 datetime.strptime('18:00', '%H:%M').time()
             ))
         ]
+
+        data_day["Result"] = data_day["Result"].replace({
+            "Answered": "Besvaret",
+            "Missed": "Ikke besvaret"
+        })
 
         if not data_day.empty:
             data_day = data_day[data_day['Result'].notnull()]
@@ -140,6 +145,11 @@ def show_conversation_activity():
             ))
         ]
 
+        data_week["Result"] = data_week["Result"].replace({
+            "Answered": "Besvaret",
+            "Missed": "Ikke besvaret"
+        })
+
         if not data_week.empty:
             data_week = data_week[data_week['Result'].notnull()]
             data_week['TimeInterval'] = data_week['StartTimeDenmark'].dt.floor('30T').dt.strftime('%H:%M')
@@ -189,6 +199,11 @@ def show_conversation_activity():
                 datetime.strptime('18:00', '%H:%M').time()
             ))
         ]
+
+        data_month["Result"] = data_month["Result"].replace({
+            "Answered": "Besvaret",
+            "Missed": "Ikke besvaret"
+        })
 
         if not data_month.empty:
             data_month = data_month[data_month['Result'].notnull()]
@@ -241,6 +256,11 @@ def show_conversation_activity():
             ))
         ]
 
+        data_quarter["Result"] = data_quarter["Result"].replace({
+            "Answered": "Besvaret",
+            "Missed": "Ikke besvaret"
+        })
+
         if not data_quarter.empty:
             data_quarter = data_quarter[data_quarter['Result'].notnull()]
             data_quarter['TimeInterval'] = data_quarter['StartTimeDenmark'].dt.floor('30T').dt.strftime('%H:%M')
@@ -291,6 +311,11 @@ def show_conversation_activity():
                 datetime.strptime('18:00', '%H:%M').time()
             ))
         ]
+
+        data_half["Result"] = data_half["Result"].replace({
+            "Answered": "Besvaret",
+            "Missed": "Ikke besvaret"
+        })
 
         if not data_half.empty:
             data_half = data_half[data_half['Result'].notnull()]
