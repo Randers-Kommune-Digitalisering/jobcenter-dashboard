@@ -77,9 +77,9 @@ def show_queue_forward():
         forwarded["Year"] = forwarded["StartTimeDenmark"].dt.year
         forwarded["Week"] = forwarded["StartTimeDenmark"].dt.isocalendar().week
         unique_years = sorted(forwarded["Year"].unique())
-        selected_year = st.selectbox("Vælg år", unique_years, index=len(unique_years)-1, key="queue_forward_year_week")
+        selected_year = st.selectbox("Vælg år", unique_years, index=len(unique_years) - 1, key="queue_forward_year_week")
         unique_weeks = sorted(forwarded[forwarded["Year"] == selected_year]["Week"].unique())
-        selected_week = st.selectbox("Vælg uge", unique_weeks, index=len(unique_weeks)-1, key="queue_forward_week")
+        selected_week = st.selectbox("Vælg uge", unique_weeks, index=len(unique_weeks) - 1, key="queue_forward_week")
 
         week_data = forwarded[(forwarded["Year"] == selected_year) & (forwarded["Week"] == selected_week)]
 
@@ -102,11 +102,11 @@ def show_queue_forward():
         forwarded["Year"] = forwarded["StartTimeDenmark"].dt.year
         forwarded["Month"] = forwarded["StartTimeDenmark"].dt.month
         unique_years = sorted(forwarded["Year"].unique())
-        selected_year = st.selectbox("Vælg år", unique_years, index=len(unique_years)-1, key="queue_forward_year_month")
+        selected_year = st.selectbox("Vælg år", unique_years, index=len(unique_years) - 1, key="queue_forward_year_month")
         unique_months = sorted(forwarded[forwarded["Year"] == selected_year]["Month"].unique())
         month_names = {1: "Januar", 2: "Februar", 3: "Marts", 4: "April", 5: "Maj", 6: "Juni", 7: "Juli", 8: "August", 9: "September", 10: "Oktober", 11: "November", 12: "December"}
         month_options = [(m, month_names[m]) for m in unique_months]
-        selected_month = st.selectbox("Vælg måned", month_options, format_func=lambda x: x[1], index=len(month_options)-1, key="queue_forward_month")
+        selected_month = st.selectbox("Vælg måned", month_options, format_func=lambda x: x[1], index=len(month_options) - 1, key="queue_forward_month")
 
         month_data = forwarded[(forwarded["Year"] == selected_year) & (forwarded["Month"] == selected_month[0])]
 
