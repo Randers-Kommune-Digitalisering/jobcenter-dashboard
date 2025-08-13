@@ -43,6 +43,24 @@ def load_and_process_data_from_zylinc_db(table_name, queue_name=None):
         zylinc_db_client.close_connection()
 
 
+def load_queue_forward_data():
+    query = """
+        SELECT "FirstQueueDisplayName", "LastQueueDisplayName", "Result", "StartTimeUtc"
+        FROM zylinc_activity_data
+    """
+    try:
+        result = zylinc_db_client.execute_sql(query)
+        if result is not None:
+            df = pd.DataFrame(result, columns=["FirstQueueDisplayName", "LastQueueDisplayName", "Result", "StartTimeUtc"])
+            df["StartTimeDenmark"] = df["StartTimeUtc"].apply(convert_to_denmark_time)
+            df["StartTimeDenmark"] = pd.to_datetime(df["StartTimeDenmark"])
+            return df
+        else:
+            return None
+    finally:
+        zylinc_db_client.close_connection()
+
+
 def convert_minutes_to_hms(minutes):
     if pd.isna(minutes):
         return "0:00:00"
