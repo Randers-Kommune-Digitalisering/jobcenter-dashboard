@@ -4,7 +4,6 @@ from datetime import datetime
 import altair as alt
 from utils.zylinc_data import load_and_process_data_from_zylinc_db, convert_minutes_to_hms, get_all_queues_with_tables
 import pandas as pd
-import streamlit_shadcn_ui as ui
 
 
 def show_queue_time():
@@ -91,10 +90,11 @@ def show_queue_time():
 
                 col1 = st.columns([1])[0]
                 with col1:
-                    ui.metric_card(
-                        title="Gennemsnitlig ventetid (Periode)",
-                        content=convert_minutes_to_hms(avg_wait_time_period),
-                        description=f"Ventetid i kø fra {start_date.strftime('%d-%m-%Y')} til {end_date.strftime('%d-%m-%Y')}",
+                    st.metric(
+                        label="Gennemsnitlig ventetid (Periode)",
+                        value=convert_minutes_to_hms(avg_wait_time_period),
+                        help=f"Ventetid i kø fra {start_date.strftime('%d-%m-%Y')} til {end_date.strftime('%d-%m-%Y')}",
+                        border=True
                     )
 
                 queue_data = period_data[period_data['ConversationEventType'].isin(['JoinedQueue', 'LeftQueue'])]
@@ -158,10 +158,11 @@ def show_queue_time():
             col1 = st.columns([1])[0]
 
             with col1:
-                ui.metric_card(
-                    title="Gennemsnitlig ventetid(Dag)",
-                    content=convert_minutes_to_hms(avg_wait_time_today),
-                    description=f"Ventetid i kø for {selected_date}",
+                st.metric(
+                    label="Gennemsnitlig ventetid(Dag)",
+                    value=convert_minutes_to_hms(avg_wait_time_today),
+                    help=f"Ventetid i kø for {selected_date}",
+                    border=True
                 )
 
             queue_data = historical_data_today[historical_data_today['ConversationEventType'].isin(['JoinedQueue', 'LeftQueue'])]
@@ -230,10 +231,11 @@ def show_queue_time():
         col1 = st.columns([1])[0]
 
         with col1:
-            ui.metric_card(
-                title="Gennemsnitlig ventetid(Uge)",
-                content=convert_minutes_to_hms(avg_wait_time_week),
-                description=f"Ventetid i kø for Uge {selected_week} {selected_year_week}",
+            st.metric(
+                label="Gennemsnitlig ventetid(Uge)",
+                value=convert_minutes_to_hms(avg_wait_time_week),
+                help=f"Ventetid i kø for Uge {selected_week} {selected_year_week}",
+                border=True
             )
 
         queue_data = historical_data_week[historical_data_week['ConversationEventType'].isin(['JoinedQueue', 'LeftQueue'])]
@@ -261,51 +263,41 @@ def show_queue_time():
         st.altair_chart(chart, use_container_width=True)
 
     if content_tabs == 'Måned':
-        unique_years = historical_data['StartTimeDenmark'].dt.year.unique()
+        unique_years = sorted(historical_data['StartTimeDenmark'].dt.year.unique())
 
         if len(unique_years) == 0:
             st.error("Ingen data tilgængelig for den valgte kø.")
             st.stop()
 
-        if 'selected_year_month' in st.session_state:
-            if st.session_state['selected_year_month'] not in unique_years:
-                st.session_state['selected_year_month'] = max(unique_years)
+        default_year = max(unique_years)
+        session_year = st.session_state.get('year_select_activity_month', default_year)
 
-        selected_year_month = st.selectbox(
-            "Vælg et år",
-            unique_years,
-            format_func=lambda x: f'{x}',
-            index=unique_years.tolist().index(st.session_state.get('selected_year_month', max(unique_years))),
-            key='year_select_month'
-        )
+        if session_year not in unique_years:
+            session_year = default_year
 
-        unique_months = historical_data[historical_data['StartTimeDenmark'].dt.year == selected_year_month]['StartTimeDenmark'].dt.to_period('M').unique()
+        selected_year_month = st.selectbox("Vælg år", unique_years, key='year_select_activity_month', index=unique_years.index(session_year))
+        unique_months = sorted(historical_data[historical_data['StartTimeDenmark'].dt.year == selected_year_month]['StartTimeDenmark'].dt.month.unique())
         month_names = {1: 'Januar', 2: 'Februar', 3: 'Marts', 4: 'April', 5: 'Maj', 6: 'Juni', 7: 'Juli', 8: 'August', 9: 'September', 10: 'Oktober', 11: 'November', 12: 'December'}
-        month_options = [(month.month, month_names[month.month]) for month in unique_months]
 
-        if 'selected_month' not in st.session_state or st.session_state['selected_month'] not in [month[0] for month in month_options]:
-            st.session_state['selected_month'] = max([month[0] for month in month_options]) if month_options else None
-
-        selected_month = st.selectbox(
-            "Vælg en måned",
-            month_options,
-            format_func=lambda x: x[1],
-            index=[month[0] for month in month_options].index(st.session_state['selected_month']) if st.session_state['selected_month'] in [month[0] for month in month_options] else 0,
-            key='month_select'
-        )
-
-        st.session_state['selected_year_month'] = selected_year_month
-        st.session_state['selected_month'] = selected_month[0]
-
-        selected_month_number = selected_month[0]
-
-        historical_data_month = historical_data[
-            historical_data['StartTimeDenmark'].dt.to_period('M') == pd.Period(year=selected_year_month, month=selected_month_number, freq='M')
-        ]
-
-        if historical_data_month.empty:
-            st.error("Ingen data tilgængelig for den valgte måned.")
+        if len(unique_months) == 0:
+            st.error("Ingen måneder med data for valgt år.")
             st.stop()
+
+        default_month = max(unique_months)
+        session_month = st.session_state.get('month_select_activity', default_month)
+
+        if session_month not in unique_months:
+            session_month = default_month
+
+        selected_month = st.selectbox("Vælg måned", unique_months, format_func=lambda x: month_names[x], key='month_select_activity', index=unique_months.index(session_month))
+        historical_data_month = historical_data[
+            (historical_data['StartTimeDenmark'].dt.year == selected_year_month) &
+            (historical_data['StartTimeDenmark'].dt.month == selected_month) &
+            (historical_data['StartTimeDenmark'].dt.time.between(
+                datetime.strptime('05:00', '%H:%M').time(),
+                datetime.strptime('18:00', '%H:%M').time()
+            ))
+        ]
 
         avg_wait_time_month = historical_data_month['QueueDurationMinutes'].mean()
         avg_wait_time_month = 0 if pd.isna(avg_wait_time_month) else avg_wait_time_month
@@ -313,10 +305,11 @@ def show_queue_time():
         col1 = st.columns([1])[0]
 
         with col1:
-            ui.metric_card(
-                title="Gennemsnitlig ventetid(Måned)",
-                content=convert_minutes_to_hms(avg_wait_time_month),
-                description=f"Ventetid i kø for {month_names[selected_month_number]} {selected_year_month}",
+            st.metric(
+                label="Gennemsnitlig ventetid(Måned)",
+                value=convert_minutes_to_hms(avg_wait_time_month),
+                help=f"Ventetid i kø for {month_names[selected_month]} {selected_year_month}",
+                border=True
             )
 
         queue_data = historical_data_month[historical_data_month['ConversationEventType'].isin(['JoinedQueue', 'LeftQueue'])]
@@ -326,7 +319,7 @@ def show_queue_time():
         queue_data['Day'] = queue_data['StartTimeDenmark'].dt.day
         daily_queue_data = queue_data.groupby('Day').agg({'QueueDurationMinutes': 'sum', 'QueueName': 'first'}).reset_index()
 
-        st.header(f"Ventetid i kø (Måned) - {selected_year_month}, Måned {month_names[selected_month_number]}", divider="gray")
+        st.header(f"Ventetid i kø (Måned) - {selected_year_month}, Måned {month_names[selected_month]}", divider="gray")
         chart = alt.Chart(daily_queue_data).mark_bar().encode(
             x=alt.X('Day:O', title='Dag', axis=alt.Axis(format='d')),
             y=alt.Y('QueueDurationMinutes:Q', title='Ventetid (minutter)'),
@@ -397,10 +390,11 @@ def show_queue_time():
         col1 = st.columns([1])[0]
 
         with col1:
-            ui.metric_card(
-                title="Gennemsnitlig ventetid (Kvartal)",
-                content=convert_minutes_to_hms(avg_wait_time_quarter),
-                description=f"Ventetid i kø for {quarter_names[selected_quarter_number]} {selected_year_quarter}",
+            st.metric(
+                label="Gennemsnitlig ventetid (Kvartal)",
+                value=convert_minutes_to_hms(avg_wait_time_quarter),
+                help=f"Ventetid i kø for {quarter_names[selected_quarter_number]} {selected_year_quarter}",
+                border=True
             )
 
         queue_data = historical_data_quarter[historical_data_quarter['ConversationEventType'].isin(['JoinedQueue', 'LeftQueue'])]
@@ -491,10 +485,11 @@ def show_queue_time():
         col1 = st.columns([1])[0]
 
         with col1:
-            ui.metric_card(
-                title="Gennemsnitlig ventetid (Halvår)",
-                content=convert_minutes_to_hms(avg_wait_time_half),
-                description=f"Ventetid i kø for {half_names[selected_half_number]} {selected_year_half}",
+            st.metric(
+                label="Gennemsnitlig ventetid (Halvår)",
+                value=convert_minutes_to_hms(avg_wait_time_half),
+                help=f"Ventetid i kø for {half_names[selected_half_number]} {selected_year_half}",
+                border=True
             )
 
         queue_data = historical_data_half[historical_data_half['ConversationEventType'].isin(['JoinedQueue', 'LeftQueue'])]

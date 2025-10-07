@@ -1,10 +1,9 @@
 import streamlit as st
 import streamlit_antd_components as sac
 import altair as alt
-from datetime import datetime, timedelta
+from datetime import datetime
 import pandas as pd
 from utils.zylinc_data import load_and_process_data_from_zylinc_db, get_all_queues_with_tables
-import streamlit_shadcn_ui as ui
 
 
 def show_conversation_call():
@@ -89,10 +88,11 @@ def show_conversation_call():
                 answered_calls_period = period_data[period_data['Result'] == 'Answered']
                 answered_calls_period_count = answered_calls_period.shape[0]
 
-                ui.metric_card(
-                    title="Antal besvarede opkald (Periode)",
-                    content=int(answered_calls_period_count),
-                    description=f"Samlet antal opkald besvaret fra {start_date.strftime('%d-%m-%Y')} til {end_date.strftime('%d-%m-%Y')}."
+                st.metric(
+                    label="Antal besvarede opkald (Periode)",
+                    value=int(answered_calls_period_count),
+                    help=f"Samlet antal opkald besvaret fra {start_date.strftime('%d-%m-%Y')} til {end_date.strftime('%d-%m-%Y')}.",
+                    border=True
                 )
 
                 if not answered_calls_period.empty:
@@ -150,10 +150,11 @@ def show_conversation_call():
             col1 = st.columns([1])[0]
 
             with col1:
-                ui.metric_card(
-                    title="Antal besvarede opkald (Dag)",
-                    content=int(answered_calls_today_count),
-                    description=f"Samlet antal opkald besvaret den {selected_date}."
+                st.metric(
+                    label="Antal besvarede opkald (Dag)",
+                    value=int(answered_calls_today_count),
+                    help=f"Samlet antal opkald besvaret den {selected_date}.",
+                    border=True
                 )
 
             answered_calls_today['TimeInterval'] = answered_calls_today['StartTimeDenmark'].dt.floor('30T')
@@ -218,10 +219,11 @@ def show_conversation_call():
         col1 = st.columns([1])[0]
 
         with col1:
-            ui.metric_card(
-                title="Antal besvarede opkald (Uge)",
-                content=int(answered_calls_week_count),
-                description=f"Samlet antal opkald besvaret i Uge {selected_week}."
+            st.metric(
+                label="Antal besvarede opkald (Uge)",
+                value=int(answered_calls_week_count),
+                help=f"Samlet antal opkald besvaret i Uge {selected_week}.",
+                border=True
             )
 
         answered_calls_week['Day'] = answered_calls_week['StartTimeDenmark'].dt.floor('D')
@@ -260,41 +262,41 @@ def show_conversation_call():
         st.altair_chart(chart, use_container_width=True)
 
     if content_tabs == 'Måned':
-        unique_years = historical_data['StartTimeDenmark'].dt.year.unique()
+        unique_years = sorted(historical_data['StartTimeDenmark'].dt.year.unique())
 
-        if 'selected_year_month' in st.session_state:
-            if st.session_state['selected_year_month'] not in unique_years:
-                st.session_state['selected_year_month'] = max(unique_years)
+        if len(unique_years) == 0:
+            st.error("Ingen data tilgængelig for den valgte kø.")
+            st.stop()
 
-        selected_year_month = st.selectbox(
-            "Vælg et år",
-            unique_years,
-            format_func=lambda x: f'{x}',
-            index=unique_years.tolist().index(st.session_state.get('selected_year_month', max(unique_years))),
-            key='year_select_month'
-        )
+        default_year = max(unique_years)
+        session_year = st.session_state.get('year_select_activity_month', default_year)
 
-        unique_months = historical_data[historical_data['StartTimeDenmark'].dt.year == selected_year_month]['StartTimeDenmark'].dt.to_period('M').unique()
+        if session_year not in unique_years:
+            session_year = default_year
+
+        selected_year_month = st.selectbox("Vælg år", unique_years, key='year_select_activity_month', index=unique_years.index(session_year))
+        unique_months = sorted(historical_data[historical_data['StartTimeDenmark'].dt.year == selected_year_month]['StartTimeDenmark'].dt.month.unique())
         month_names = {1: 'Januar', 2: 'Februar', 3: 'Marts', 4: 'April', 5: 'Maj', 6: 'Juni', 7: 'Juli', 8: 'August', 9: 'September', 10: 'Oktober', 11: 'November', 12: 'December'}
-        month_options = [(month.month, month_names[month.month]) for month in unique_months]
 
-        if 'selected_month' not in st.session_state or st.session_state['selected_month'] not in [month[0] for month in month_options]:
-            st.session_state['selected_month'] = max([month[0] for month in month_options]) if month_options else None
+        if len(unique_months) == 0:
+            st.error("Ingen måneder med data for valgt år.")
+            st.stop()
 
-        selected_month = st.selectbox(
-            "Vælg en måned",
-            month_options,
-            format_func=lambda x: x[1],
-            index=[month[0] for month in month_options].index(st.session_state['selected_month']) if st.session_state['selected_month'] in [month[0] for month in month_options] else 0,
-            key='month_select'
-        )
+        default_month = max(unique_months)
+        session_month = st.session_state.get('month_select_activity', default_month)
 
-        st.session_state['selected_year_month'] = selected_year_month
-        st.session_state['selected_month'] = selected_month[0]
+        if session_month not in unique_months:
+            session_month = default_month
 
-        selected_month_number = selected_month[0]
-
-        historical_data_month = historical_data[historical_data['StartTimeDenmark'].dt.to_period('M') == pd.Period(year=selected_year_month, month=selected_month_number, freq='M')]
+        selected_month = st.selectbox("Vælg måned", unique_months, format_func=lambda x: month_names[x], key='month_select_activity', index=unique_months.index(session_month))
+        historical_data_month = historical_data[
+            (historical_data['StartTimeDenmark'].dt.year == selected_year_month) &
+            (historical_data['StartTimeDenmark'].dt.month == selected_month) &
+            (historical_data['StartTimeDenmark'].dt.time.between(
+                datetime.strptime('05:00', '%H:%M').time(),
+                datetime.strptime('18:00', '%H:%M').time()
+            ))
+        ]
 
         answered_calls_month = historical_data_month[historical_data_month['Result'] == 'Answered']
         answered_calls_month_count = answered_calls_month.shape[0]
@@ -302,17 +304,18 @@ def show_conversation_call():
         col1 = st.columns([1])[0]
 
         with col1:
-            ui.metric_card(
-                title="Antal besvarede opkald (Måned)",
-                content=int(answered_calls_month_count),
-                description=f"Samlet antal opkald besvaret i {month_names[selected_month_number]} {selected_year_month}."
+            st.metric(
+                label="Antal besvarede opkald (Måned)",
+                value=int(answered_calls_month_count),
+                help=f"Samlet antal opkald besvaret i {month_names[selected_month]} {selected_year_month}.",
+                border=True
             )
 
         answered_calls_month['Day'] = answered_calls_month['StartTimeDenmark'].dt.floor('D')
         daily_data = answered_calls_month.groupby(['Day']).size().reset_index(name='Antal opkald')
         daily_data['Day'] = daily_data['Day'].dt.day
 
-        st.header(f"Resultat af opkald (Måned) - {selected_year_month}, Måned {month_names[selected_month_number]}", divider="gray")
+        st.header(f"Resultat af opkald (Måned) - {selected_year_month}, Måned {month_names[selected_month]}", divider="gray")
         chart = alt.Chart(daily_data).mark_bar().encode(
             x=alt.X('Day:O', title='Månedsdag'),
             y='Antal opkald:Q',
@@ -371,10 +374,11 @@ def show_conversation_call():
         col1 = st.columns([1])[0]
 
         with col1:
-            ui.metric_card(
-                title="Antal besvarede opkald (Kvartal)",
-                content=int(answered_calls_quarter_count),
-                description=f"Samlet antal opkald besvaret i {quarter_names[selected_quarter_number]} {selected_year_quarter}."
+            st.metric(
+                label="Antal besvarede opkald (Kvartal)",
+                value=int(answered_calls_quarter_count),
+                help=f"Samlet antal opkald besvaret i {quarter_names[selected_quarter_number]} {selected_year_quarter}.",
+                border=True
             )
 
         answered_calls_quarter['Month'] = answered_calls_quarter['StartTimeDenmark'].dt.month
@@ -453,10 +457,11 @@ def show_conversation_call():
         col1 = st.columns([1])[0]
 
         with col1:
-            ui.metric_card(
-                title="Antal besvarede opkald (Halvår)",
-                content=int(answered_calls_half_count),
-                description=f"Samlet antal opkald besvaret i {half_names[selected_half_number]} {selected_year_half}."
+            st.metric(
+                label="Antal besvarede opkald (Halvår)",
+                value=int(answered_calls_half_count),
+                help=f"Samlet antal opkald besvaret i {half_names[selected_half_number]} {selected_year_half}.",
+                border=True
             )
 
         answered_calls_half['Month'] = answered_calls_half['StartTimeDenmark'].dt.month

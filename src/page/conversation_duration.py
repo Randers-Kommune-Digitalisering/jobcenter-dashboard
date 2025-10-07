@@ -4,7 +4,6 @@ from datetime import datetime
 import altair as alt
 import pandas as pd
 from utils.zylinc_data import load_and_process_data_from_zylinc_db, convert_minutes_to_hms, get_all_queues_with_tables
-import streamlit_shadcn_ui as ui
 
 
 def show_conversation_duration():
@@ -92,10 +91,11 @@ def show_conversation_duration():
 
                 col1 = st.columns([1])[0]
                 with col1:
-                    ui.metric_card(
-                        title="Gennemsnitlig varighed af besvarede opkald (Periode)",
-                        content=convert_minutes_to_hms(avg_duration_period),
-                        description=f"Varighed af samtale fra {start_date.strftime('%d-%m-%Y')} til {end_date.strftime('%d-%m-%Y')}"
+                    st.metric(
+                        label="Gennemsnitlig varighed af besvarede opkald (Periode)",
+                        value=convert_minutes_to_hms(avg_duration_period),
+                        help=f"Varighed af samtale fra {start_date.strftime('%d-%m-%Y')} til {end_date.strftime('%d-%m-%Y')}",
+                        border=True
                     )
 
                 if not answered_period.empty:
@@ -162,10 +162,11 @@ def show_conversation_duration():
             col1 = st.columns([1])[0]
 
             with col1:
-                ui.metric_card(
-                    title="Gennemsnitlig varighed af besvarede opkald(Dag)",
-                    content=convert_minutes_to_hms(avg_duration_today),
-                    description=f"Varighed af samtale for {selected_date}"
+                st.metric(
+                    label="Gennemsnitlig varighed af besvarede opkald(Dag)",
+                    value=convert_minutes_to_hms(avg_duration_today),
+                    help=f"Varighed af samtale for {selected_date}",
+                    border=True
                 )
 
             if not answered_today.empty:
@@ -233,10 +234,11 @@ def show_conversation_duration():
         col1 = st.columns([1])[0]
 
         with col1:
-            ui.metric_card(
-                title="Gennemsnitlig varighed af besvarede opkald(Uge)",
-                content=convert_minutes_to_hms(avg_duration_week),
-                description=f"Varighed af samtale for uge {selected_week} {selected_year_week}"
+            st.metric(
+                label="Gennemsnitlig varighed af besvarede opkald(Uge)",
+                value=convert_minutes_to_hms(avg_duration_week),
+                help=f"Varighed af samtale for uge {selected_week} {selected_year_week}",
+                border=True
             )
 
         chart_data = historical_data_week[['StartTimeDenmark', 'DurationMinutes', 'AgentDisplayName']]
@@ -279,51 +281,41 @@ def show_conversation_duration():
         st.altair_chart(chart, use_container_width=True)
 
     if content_tabs == 'Måned':
-        unique_years = historical_data['StartTimeDenmark'].dt.year.unique()
+        unique_years = sorted(historical_data['StartTimeDenmark'].dt.year.unique())
 
         if len(unique_years) == 0:
             st.error("Ingen data tilgængelig for den valgte kø.")
             st.stop()
 
-        if 'selected_year_month' in st.session_state:
-            if st.session_state['selected_year_month'] not in unique_years:
-                st.session_state['selected_year_month'] = max(unique_years)
+        default_year = max(unique_years)
+        session_year = st.session_state.get('year_select_activity_month', default_year)
 
-        selected_year_month = st.selectbox(
-            "Vælg et år",
-            unique_years,
-            format_func=lambda x: f'{x}',
-            index=unique_years.tolist().index(st.session_state.get('selected_year_month', max(unique_years))),
-            key='year_select_month'
-        )
+        if session_year not in unique_years:
+            session_year = default_year
 
-        unique_months = historical_data[historical_data['StartTimeDenmark'].dt.year == selected_year_month]['StartTimeDenmark'].dt.to_period('M').unique()
+        selected_year_month = st.selectbox("Vælg år", unique_years, key='year_select_activity_month', index=unique_years.index(session_year))
+        unique_months = sorted(historical_data[historical_data['StartTimeDenmark'].dt.year == selected_year_month]['StartTimeDenmark'].dt.month.unique())
         month_names = {1: 'Januar', 2: 'Februar', 3: 'Marts', 4: 'April', 5: 'Maj', 6: 'Juni', 7: 'Juli', 8: 'August', 9: 'September', 10: 'Oktober', 11: 'November', 12: 'December'}
-        month_options = [(month.month, month_names[month.month]) for month in unique_months]
 
-        if 'selected_month' not in st.session_state or st.session_state['selected_month'] not in [month[0] for month in month_options]:
-            st.session_state['selected_month'] = min([month[0] for month in month_options]) if month_options else None
-
-        selected_month = st.selectbox(
-            "Vælg en måned",
-            month_options,
-            format_func=lambda x: x[1],
-            index=[month[0] for month in month_options].index(st.session_state['selected_month']) if st.session_state['selected_month'] in [month[0] for month in month_options] else 0,
-            key='month_select'
-        )
-
-        st.session_state['selected_year_month'] = selected_year_month
-        st.session_state['selected_month'] = selected_month[0]
-
-        selected_month_number = selected_month[0]
-
-        historical_data_month = historical_data[
-            historical_data['StartTimeDenmark'].dt.to_period('M') == pd.Period(year=selected_year_month, month=selected_month_number, freq='M')
-        ]
-
-        if historical_data_month.empty:
-            st.error("Ingen data tilgængelig for den valgte måned.")
+        if len(unique_months) == 0:
+            st.error("Ingen måneder med data for valgt år.")
             st.stop()
+
+        default_month = max(unique_months)
+        session_month = st.session_state.get('month_select_activity', default_month)
+
+        if session_month not in unique_months:
+            session_month = default_month
+
+        selected_month = st.selectbox("Vælg måned", unique_months, format_func=lambda x: month_names[x], key='month_select_activity', index=unique_months.index(session_month))
+        historical_data_month = historical_data[
+            (historical_data['StartTimeDenmark'].dt.year == selected_year_month) &
+            (historical_data['StartTimeDenmark'].dt.month == selected_month) &
+            (historical_data['StartTimeDenmark'].dt.time.between(
+                datetime.strptime('05:00', '%H:%M').time(),
+                datetime.strptime('18:00', '%H:%M').time()
+            ))
+        ]
 
         avg_duration_month = historical_data_month[historical_data_month['Result'] == 'Answered']['DurationMinutes'].mean()
         avg_duration_month = 0 if pd.isna(avg_duration_month) else avg_duration_month
@@ -331,17 +323,18 @@ def show_conversation_duration():
         col1 = st.columns([1])[0]
 
         with col1:
-            ui.metric_card(
-                title="Gennemsnitlig varighed af besvarede opkald (Måned)",
-                content=convert_minutes_to_hms(avg_duration_month),
-                description=f"Varighed af samtale for {month_names[selected_month_number]} {selected_year_month}"
+            st.metric(
+                label="Gennemsnitlig varighed af besvarede opkald (Måned)",
+                value=convert_minutes_to_hms(avg_duration_month),
+                help=f"Varighed af samtale for {month_names[selected_month]} {selected_year_month}",
+                border=True
             )
 
         historical_data_month['Day'] = historical_data_month['StartTimeDenmark'].dt.day
 
         daily_data = historical_data_month.groupby(['Day', 'AgentDisplayName']).agg({'DurationMinutes': 'mean'}).reset_index()
 
-        st.header(f"Varighed af samtale (Måned) - {month_names[selected_month_number]} {selected_year_month}", divider="gray")
+        st.header(f"Varighed af samtale (Måned) - {month_names[selected_month]} {selected_year_month}", divider="gray")
         chart = alt.Chart(daily_data).mark_bar().encode(
             x=alt.X('Day:O', title='Dag', axis=alt.Axis(format='d')),
             y=alt.Y('DurationMinutes:Q', title='Varighed (minutter)'),
@@ -407,10 +400,11 @@ def show_conversation_duration():
 
         col1 = st.columns([1])[0]
         with col1:
-            ui.metric_card(
-                title="Gennemsnitlig varighed af besvarede opkald (Kvartal)",
-                content=convert_minutes_to_hms(avg_duration_quarter),
-                description=f"Varighed af samtale for {quarter_names[selected_quarter_number]} {selected_year_quarter}"
+            st.metric(
+                label="Gennemsnitlig varighed af besvarede opkald (Kvartal)",
+                value=convert_minutes_to_hms(avg_duration_quarter),
+                help=f"Varighed af samtale for {quarter_names[selected_quarter_number]} {selected_year_quarter}",
+                border=True
             )
 
         historical_data_quarter['Month'] = historical_data_quarter['StartTimeDenmark'].dt.month
@@ -492,10 +486,11 @@ def show_conversation_duration():
 
         col1 = st.columns([1])[0]
         with col1:
-            ui.metric_card(
-                title="Gennemsnitlig varighed af besvarede opkald (Halvår)",
-                content=convert_minutes_to_hms(avg_duration_half),
-                description=f"Varighed af samtale for {half_names[selected_half_number]} {selected_year_half}"
+            st.metric(
+                label="Gennemsnitlig varighed af besvarede opkald (Halvår)",
+                value=convert_minutes_to_hms(avg_duration_half),
+                help=f"Varighed af samtale for {half_names[selected_half_number]} {selected_year_half}",
+                border=True
             )
 
         historical_data_half['Month'] = historical_data_half['StartTimeDenmark'].dt.month
