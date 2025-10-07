@@ -191,34 +191,34 @@ def show_conversation_duration():
                 st.info("Ingen besvarede opkald på den valgte dato.")
 
     if content_tabs == 'Uge':
-        unique_years = historical_data['StartTimeDenmark'].dt.year.unique()
-        selected_year_week = st.selectbox(
-            "Vælg et år",
-            unique_years,
-            format_func=lambda x: f'{x}',
-            index=unique_years.tolist().index(st.session_state['selected_year_week']) if 'selected_year_week' in st.session_state and st.session_state['selected_year_week'] is not None else 0,
-            key='year_select_week'
-        )
+        unique_years = sorted(historical_data['StartTimeDenmark'].dt.year.unique())
 
-        unique_weeks = historical_data[historical_data['StartTimeDenmark'].dt.year == selected_year_week]['StartTimeDenmark'].dt.isocalendar().week.unique()
+        if len(unique_years) == 0:
+            st.error("Ingen data tilgængelig for den valgte kø.")
+            st.stop()
 
-        if 'selected_week' not in st.session_state or st.session_state['selected_week'] not in unique_weeks:
-            st.session_state['selected_week'] = unique_weeks[0] if unique_weeks else None
+        default_year = max(unique_years)
+        session_year = st.session_state.get('selected_year_week', default_year)
 
-        selected_week = st.selectbox(
-            "Vælg en uge",
-            unique_weeks,
-            format_func=lambda x: f'Uge {x}',
-            index=unique_weeks.tolist().index(st.session_state['selected_week']) if 'selected_week' in st.session_state and st.session_state['selected_week'] is not None else 0,
-            key='week_select'
-        )
+        if session_year not in unique_years:
+            session_year = default_year
 
-        st.session_state['selected_year_week'] = selected_year_week
-        st.session_state['selected_week'] = selected_week
+        selected_year_week = st.selectbox("Vælg år", unique_years, key='selected_year_week', index=unique_years.index(session_year))
+        unique_weeks = sorted(historical_data[historical_data['StartTimeDenmark'].dt.year == selected_year_week]['StartTimeDenmark'].dt.isocalendar().week.unique())
 
+        if len(unique_weeks) == 0:
+            st.error("Ingen uger med data for valgt år.")
+            st.stop()
+
+        default_week = max(unique_weeks)
+        session_week = st.session_state.get('selected_week', default_week)
+
+        if session_week not in unique_weeks:
+            session_week = default_week
+
+        selected_week = st.selectbox("Vælg uge", unique_weeks, key='selected_week', index=unique_weeks.index(session_week))
         start_of_week = pd.to_datetime(f'{selected_year_week}-W{int(selected_week)}-1', format='%Y-W%W-%w')
         end_of_week = start_of_week + pd.Timedelta(days=6)
-
         historical_data_week = historical_data[
             (historical_data['StartTimeDenmark'] >= start_of_week) &
             (historical_data['StartTimeDenmark'] <= end_of_week) &
@@ -302,7 +302,7 @@ def show_conversation_duration():
         month_options = [(month.month, month_names[month.month]) for month in unique_months]
 
         if 'selected_month' not in st.session_state or st.session_state['selected_month'] not in [month[0] for month in month_options]:
-            st.session_state['selected_month'] = max([month[0] for month in month_options]) if month_options else None
+            st.session_state['selected_month'] = min([month[0] for month in month_options]) if month_options else None
 
         selected_month = st.selectbox(
             "Vælg en måned",

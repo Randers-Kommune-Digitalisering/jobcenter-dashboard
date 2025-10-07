@@ -187,50 +187,41 @@ def show_queue_time():
             st.altair_chart(chart, use_container_width=True)
 
     if content_tabs == 'Uge':
-        unique_years = historical_data['StartTimeDenmark'].dt.year.unique()
+        unique_years = sorted(historical_data['StartTimeDenmark'].dt.year.unique())
 
         if len(unique_years) == 0:
             st.error("Ingen data tilgængelig for den valgte kø.")
             st.stop()
 
-        if 'selected_year_week' in st.session_state:
-            if st.session_state['selected_year_week'] not in unique_years:
-                st.session_state['selected_year_week'] = max(unique_years)
+        default_year = max(unique_years)
+        session_year = st.session_state.get('selected_year_week', default_year)
 
-        selected_year_week = st.selectbox(
-            "Vælg et år",
-            unique_years,
-            format_func=lambda x: f'{x}',
-            index=unique_years.tolist().index(st.session_state.get('selected_year_week', max(unique_years))),
-            key='year_select_week'
-        )
+        if session_year not in unique_years:
+            session_year = default_year
 
-        unique_weeks = historical_data[historical_data['StartTimeDenmark'].dt.year == selected_year_week]['StartTimeDenmark'].dt.isocalendar().week.unique()
+        selected_year_week = st.selectbox("Vælg år", unique_years, key='selected_year_week', index=unique_years.index(session_year))
+        unique_weeks = sorted(historical_data[historical_data['StartTimeDenmark'].dt.year == selected_year_week]['StartTimeDenmark'].dt.isocalendar().week.unique())
 
         if len(unique_weeks) == 0:
-            st.error("Ingen data tilgængelig for den valgte uge.")
+            st.error("Ingen uger med data for valgt år.")
             st.stop()
 
-        if 'selected_week' not in st.session_state or st.session_state['selected_week'] not in unique_weeks:
-            st.session_state['selected_week'] = max(unique_weeks) if len(unique_weeks) > 0 else None
+        default_week = max(unique_weeks)
+        session_week = st.session_state.get('selected_week', default_week)
 
-        selected_week = st.selectbox(
-            "Vælg en uge",
-            unique_weeks,
-            format_func=lambda x: f'Uge {x}',
-            index=unique_weeks.tolist().index(st.session_state['selected_week']) if st.session_state['selected_week'] in unique_weeks else 0,
-            key='week_select'
-        )
+        if session_week not in unique_weeks:
+            session_week = default_week
 
-        st.session_state['selected_year_week'] = selected_year_week
-        st.session_state['selected_week'] = selected_week
-
+        selected_week = st.selectbox("Vælg uge", unique_weeks, key='selected_week', index=unique_weeks.index(session_week))
         start_of_week = pd.to_datetime(f'{selected_year_week}-W{int(selected_week)}-1', format='%Y-W%W-%w')
         end_of_week = start_of_week + pd.Timedelta(days=6)
-
         historical_data_week = historical_data[
             (historical_data['StartTimeDenmark'] >= start_of_week) &
-            (historical_data['StartTimeDenmark'] <= end_of_week)
+            (historical_data['StartTimeDenmark'] <= end_of_week) &
+            (historical_data['StartTimeDenmark'].dt.time.between(
+                datetime.strptime('05:00', '%H:%M').time(),
+                datetime.strptime('16:00', '%H:%M').time()
+            ))
         ]
 
         avg_wait_time_week = historical_data_week['QueueDurationMinutes'].mean()
