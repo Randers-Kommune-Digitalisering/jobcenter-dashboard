@@ -15,4 +15,5 @@ streamlit-keycloak
 streamlit-option-menu
 streamlit-antd-components
 altair==5.2.0
+streamlit_shadcn_ui==0.1.17
 pymysql
