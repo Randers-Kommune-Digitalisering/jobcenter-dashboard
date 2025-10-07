@@ -7,7 +7,7 @@ from page.operations import show_operations
 from utils.logo import get_logo
 from page.live import display_live_data
 from page.conversation_duration import show_conversation_duration
-from page.conversation_activity import show_conversation_activity
+from page.conversation_activity_daily import show_conversation_activity_daily
 from page.queue_forward import show_queue_forward
 
 st.set_page_config(page_title="Jobcenter", page_icon="assets/favicon.ico", layout="wide")
@@ -25,8 +25,8 @@ with st.sidebar:
     if selected_main == "Zylinc":
         selected_zylinc = option_menu(
             "Zylinc",
-            ['Live Data', 'Varighed af samtale', 'Resultat af opkald', 'Ventetid pr opkald', 'Antal af samtaler', 'Opkaldsaktivitet', 'Viderestilling af opkald'],
-            icons=['broadcast', 'bi bi-clock-history', 'bi bi-check2-square', 'hourglass-split', 'bi bi-telephone-outbound-fill', 'bi bi-telephone-minus-fill', 'bi bi-phone-flip'],
+            ['Live Data', 'Varighed af samtale', 'Resultat af opkald', 'Ventetid pr opkald', 'Antal af samtaler', 'Opkaldsaktivitet Døgnet', 'Viderestilling af opkald'],
+            icons=['broadcast', 'bi bi-clock-history', 'bi bi-check2-square', 'hourglass-split', 'bi bi-telephone-outbound-fill', 'bi bi-telephone-minus-fill', 'bi bi-telephone-fill', 'bi bi-phone-flip'],
             menu_icon="headset",
             default_index=0,
         )
@@ -50,8 +50,8 @@ if selected_main == "Zylinc":
         show_queue_time()
     elif selected_zylinc == 'Antal af samtaler':
         show_conversation_call()
-    elif selected_zylinc == 'Opkaldsaktivitet':
-        show_conversation_activity()
+    elif selected_zylinc == 'Opkaldsaktivitet Døgnet':
+        show_conversation_activity_daily()
     elif selected_zylinc == 'Viderestilling af opkald':
         show_queue_forward()
 

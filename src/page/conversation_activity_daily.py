@@ -6,7 +6,7 @@ import pandas as pd
 from utils.zylinc_data import load_and_process_data_from_zylinc_db, get_all_queues_with_tables
 
 
-def show_conversation_activity():
+def show_conversation_activity_daily():
     st.sidebar.header("Jobcenter Kø")
     queue_table_mapping = get_all_queues_with_tables()
     all_queues = list(queue_table_mapping.keys())
@@ -34,7 +34,7 @@ def show_conversation_activity():
         times = pd.date_range("05:00", "18:00", freq="30min").strftime('%H:%M')
         return times
 
-    def plot_activity(data, time_col):
+    def plot_activity_daily(data, time_col):
         data = data[data['Result'].notnull()]
         data['TimeInterval'] = data[time_col].dt.floor('30T').dt.strftime('%H:%M')
 
@@ -105,7 +105,7 @@ def show_conversation_activity():
                 st.info(f"**Flest opkald modtaget kl.:** {peak_times_str} ({max_count} opkald)")
 
         st.header(f"Opkaldsaktivitet fordelt på døgnet ({selected_date.strftime('%d-%m-%Y')})", divider="gray")
-        plot_activity(data_day, 'StartTimeDenmark')
+        plot_activity_daily(data_day, 'StartTimeDenmark')
 
     if content_tabs == 'Uge':
         unique_years = sorted(historical_data['StartTimeDenmark'].dt.year.unique())
@@ -120,8 +120,8 @@ def show_conversation_activity():
         if session_year not in unique_years:
             session_year = default_year
 
-        selected_year = st.selectbox("Vælg år", unique_years, key='year_select_activity_week', index=unique_years.index(session_year))
-        unique_weeks = sorted(historical_data[historical_data['StartTimeDenmark'].dt.year == selected_year]['StartTimeDenmark'].dt.isocalendar().week.unique())
+        selected_year_week = st.selectbox("Vælg år", unique_years, key='year_select_activity_week', index=unique_years.index(session_year))
+        unique_weeks = sorted(historical_data[historical_data['StartTimeDenmark'].dt.year == selected_year_week]['StartTimeDenmark'].dt.isocalendar().week.unique())
 
         if len(unique_weeks) == 0:
             st.error("Ingen uger med data for valgt år.")
@@ -134,7 +134,7 @@ def show_conversation_activity():
             session_week = default_week
 
         selected_week = st.selectbox("Vælg uge", unique_weeks, format_func=lambda x: f'Uge {x}', key='week_select_activity', index=unique_weeks.index(session_week))
-        start_of_week = pd.to_datetime(f'{selected_year}-W{int(selected_week)}-1', format='%Y-W%W-%w')
+        start_of_week = pd.to_datetime(f'{selected_year_week}-W{int(selected_week)}-1', format='%Y-W%W-%w')
         end_of_week = start_of_week + pd.Timedelta(days=6)
         data_week = historical_data[
             (historical_data['StartTimeDenmark'] >= start_of_week) &
@@ -160,8 +160,8 @@ def show_conversation_activity():
                 peak_times_str = ', '.join(peak_times)
                 st.info(f"**Flest opkald modtaget kl.:** {peak_times_str} ({max_count} opkald)")
 
-        st.header(f"Opkaldsaktivitet fordelt på døgnet (Uge {selected_week}, {selected_year})", divider="gray")
-        plot_activity(data_week, 'StartTimeDenmark')
+        st.header(f"Opkaldsaktivitet fordelt på døgnet (Uge {selected_week}, {selected_year_week})", divider="gray")
+        plot_activity_daily(data_week, 'StartTimeDenmark')
 
     if content_tabs == 'Måned':
         unique_years = sorted(historical_data['StartTimeDenmark'].dt.year.unique())
@@ -176,8 +176,8 @@ def show_conversation_activity():
         if session_year not in unique_years:
             session_year = default_year
 
-        selected_year = st.selectbox("Vælg år", unique_years, key='year_select_activity_month', index=unique_years.index(session_year))
-        unique_months = sorted(historical_data[historical_data['StartTimeDenmark'].dt.year == selected_year]['StartTimeDenmark'].dt.month.unique())
+        selected_year_month = st.selectbox("Vælg år", unique_years, key='year_select_activity_month', index=unique_years.index(session_year))
+        unique_months = sorted(historical_data[historical_data['StartTimeDenmark'].dt.year == selected_year_month]['StartTimeDenmark'].dt.month.unique())
         month_names = {1: 'Januar', 2: 'Februar', 3: 'Marts', 4: 'April', 5: 'Maj', 6: 'Juni', 7: 'Juli', 8: 'August', 9: 'September', 10: 'Oktober', 11: 'November', 12: 'December'}
 
         if len(unique_months) == 0:
@@ -192,7 +192,7 @@ def show_conversation_activity():
 
         selected_month = st.selectbox("Vælg måned", unique_months, format_func=lambda x: month_names[x], key='month_select_activity', index=unique_months.index(session_month))
         data_month = historical_data[
-            (historical_data['StartTimeDenmark'].dt.year == selected_year) &
+            (historical_data['StartTimeDenmark'].dt.year == selected_year_month) &
             (historical_data['StartTimeDenmark'].dt.month == selected_month) &
             (historical_data['StartTimeDenmark'].dt.time.between(
                 datetime.strptime('05:00', '%H:%M').time(),
@@ -215,8 +215,8 @@ def show_conversation_activity():
                 peak_times_str = ', '.join(peak_times)
                 st.info(f"**Flest opkald modtaget kl.:** {peak_times_str} ({max_count} opkald)")
 
-        st.header(f"Opkaldsaktivitet fordelt på døgnet ({month_names[selected_month]} {selected_year})", divider="gray")
-        plot_activity(data_month, 'StartTimeDenmark')
+        st.header(f"Opkaldsaktivitet fordelt på døgnet ({month_names[selected_month]} {selected_year_month})", divider="gray")
+        plot_activity_daily(data_month, 'StartTimeDenmark')
 
     if content_tabs == 'Kvartal':
         unique_years = sorted(historical_data['StartTimeDenmark'].dt.year.unique())
@@ -231,9 +231,9 @@ def show_conversation_activity():
         if session_year not in unique_years:
             session_year = default_year
 
-        selected_year = st.selectbox("Vælg år", unique_years, key='year_select_activity_quarter', index=unique_years.index(session_year))
+        selected_year_quarter = st.selectbox("Vælg år", unique_years, key='year_select_activity_quarter', index=unique_years.index(session_year))
         historical_data['Quarter'] = historical_data['StartTimeDenmark'].dt.quarter
-        unique_quarters = sorted(historical_data[historical_data['StartTimeDenmark'].dt.year == selected_year]['Quarter'].unique())
+        unique_quarters = sorted(historical_data[historical_data['StartTimeDenmark'].dt.year == selected_year_quarter]['Quarter'].unique())
         quarter_names = {1: '1. kvartal', 2: '2. kvartal', 3: '3. kvartal', 4: '4. kvartal'}
 
         if len(unique_quarters) == 0:
@@ -248,7 +248,7 @@ def show_conversation_activity():
 
         selected_quarter = st.selectbox("Vælg kvartal", unique_quarters, format_func=lambda x: quarter_names[x], key='quarter_select_activity', index=unique_quarters.index(session_quarter))
         data_quarter = historical_data[
-            (historical_data['StartTimeDenmark'].dt.year == selected_year) &
+            (historical_data['StartTimeDenmark'].dt.year == selected_year_quarter) &
             (historical_data['Quarter'] == selected_quarter) &
             (historical_data['StartTimeDenmark'].dt.time.between(
                 datetime.strptime('05:00', '%H:%M').time(),
@@ -271,8 +271,8 @@ def show_conversation_activity():
                 peak_times_str = ', '.join(peak_times)
                 st.info(f"**Flest opkald modtaget kl.:** {peak_times_str} ({max_count} opkald)")
 
-        st.header(f"Opkaldsaktivitet fordelt på døgnet ({quarter_names[selected_quarter]} {selected_year})", divider="gray")
-        plot_activity(data_quarter, 'StartTimeDenmark')
+        st.header(f"Opkaldsaktivitet fordelt på døgnet ({quarter_names[selected_quarter]} {selected_year_quarter})", divider="gray")
+        plot_activity_daily(data_quarter, 'StartTimeDenmark')
 
     if content_tabs == 'Halvår':
         unique_years = sorted(historical_data['StartTimeDenmark'].dt.year.unique())
@@ -287,10 +287,10 @@ def show_conversation_activity():
         if session_year not in unique_years:
             session_year = default_year
 
-        selected_year = st.selectbox("Vælg år", unique_years, key='year_select_activity_half', index=unique_years.index(session_year))
+        selected_year_half = st.selectbox("Vælg år", unique_years, key='year_select_activity_half', index=unique_years.index(session_year))
         historical_data['Half'] = historical_data['StartTimeDenmark'].dt.month.apply(lambda m: 1 if m <= 6 else 2)
         half_names = {1: '1. halvår', 2: '2. halvår'}
-        unique_halves = sorted(historical_data[historical_data['StartTimeDenmark'].dt.year == selected_year]['Half'].unique())
+        unique_halves = sorted(historical_data[historical_data['StartTimeDenmark'].dt.year == selected_year_half]['Half'].unique())
 
         if len(unique_halves) == 0:
             st.error("Ingen halvår med data for valgt år.")
@@ -304,7 +304,7 @@ def show_conversation_activity():
 
         selected_half = st.selectbox("Vælg halvår", unique_halves, format_func=lambda x: half_names[x], key='half_select_activity', index=unique_halves.index(session_half))
         data_half = historical_data[
-            (historical_data['StartTimeDenmark'].dt.year == selected_year) &
+            (historical_data['StartTimeDenmark'].dt.year == selected_year_half) &
             (historical_data['Half'] == selected_half) &
             (historical_data['StartTimeDenmark'].dt.time.between(
                 datetime.strptime('05:00', '%H:%M').time(),
@@ -327,5 +327,5 @@ def show_conversation_activity():
                 peak_times_str = ', '.join(peak_times)
                 st.info(f"**Flest opkald modtaget kl.:** {peak_times_str} ({max_count} opkald)")
 
-        st.header(f"Opkaldsaktivitet fordelt på døgnet ({half_names[selected_half]} {selected_year})", divider="gray")
-        plot_activity(data_half, 'StartTimeDenmark')
+        st.header(f"Opkaldsaktivitet fordelt på døgnet ({half_names[selected_half]} {selected_year_half})", divider="gray")
+        plot_activity_daily(data_half, 'StartTimeDenmark')
