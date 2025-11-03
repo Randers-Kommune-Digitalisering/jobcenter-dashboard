@@ -8,8 +8,8 @@ from sqlalchemy import create_engine
 from utils.utility_functions import format_timedelta_in_danish, decimalMinutesToStr, timedelta_to_minutes
 
 # # Uncomment when using database
-from utils.config import POSTGRES_DB_USER, POSTGRES_DB_PASS, POSTGRES_DB_HOST, POSTGRES_DB_DATABASE
-db_client = create_engine(f'postgresql+psycopg2://{POSTGRES_DB_USER}:{POSTGRES_DB_PASS}@{POSTGRES_DB_HOST}/{POSTGRES_DB_DATABASE}')
+from utils.config import FRONTDESK_POSTGRES_DB_USER, FRONTDESK_POSTGRES_DB_PASS, FRONTDESK_POSTGRES_DB_HOST, FRONTDESK_POSTGRES_DB_DATABASE
+db_client = create_engine(f'postgresql+psycopg2://{FRONTDESK_POSTGRES_DB_USER}:{FRONTDESK_POSTGRES_DB_PASS}@{FRONTDESK_POSTGRES_DB_HOST}/{FRONTDESK_POSTGRES_DB_DATABASE}')
 
 operations = pd.read_sql('SELECT * FROM operationsjobcenter', db_client)
 
